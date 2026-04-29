@@ -38,7 +38,9 @@ export async function uploadTaskPackage(file: File, name?: string) {
   formData.append('file', file);
   if (name) formData.append('name', name);
   const { data } = await api.post('/transfer/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+    maxContentLength: 500 * 1024 * 1024,
+    transformRequest: [(d) => d],
   });
   return data;
 }

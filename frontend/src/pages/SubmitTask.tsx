@@ -1,5 +1,6 @@
 import { useState, useRef, DragEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
 import { submitTask, uploadTaskPackage, submitFromPackage } from '../services/api';
 
 export default function SubmitTask() {
@@ -19,7 +20,10 @@ export default function SubmitTask() {
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <h2>◻ CARGO BAY</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>◻ CARGO BAY</h2>
+        <Link to="/tutorial" style={{ font: '6px var(--font-pixel)', color: 'var(--cyan)', textDecoration: 'none', border: '2px solid var(--border)', padding: '5px 10px' }}>◉ TUTORIAL</Link>
+      </div>
       <div className="divider" />
       <div style={{ display: 'flex', gap: 0, margin: '14px 0' }}>
         <button className={`btn ${mode === 'zip' ? 'cyan' : ''}`} onClick={() => setMode('zip')} style={{ font: '7px var(--font-pixel)' }}>ZIP UPLOAD</button>
@@ -37,14 +41,14 @@ export default function SubmitTask() {
           {file && (<>
             <F label="MISSION NAME" value={name} onChange={v => setName(v)} />
             {!result ? (
-              <button className="btn cyan" disabled={uploading} onClick={async () => { setUploading(true); try { const r = await uploadTaskPackage(file, name); setResult(r.data as Record<string,unknown>); } catch (e) { setErr((e as Error).message); } finally { setUploading(false); } }} style={{ width: '100%' }}>
+              <button className="btn cyan" disabled={uploading} onClick={async () => { setUploading(true); setErr(''); try { const r = await uploadTaskPackage(file, name); setResult(r.data as Record<string,unknown>); } catch (e) { const msg = axios.isAxiosError(e) ? (e.response?.data?.message || e.message) : (e as Error).message; setErr(msg); } finally { setUploading(false); } }} style={{ width: '100%' }}>
                 {uploading ? 'UPLOADING...' : 'STAGE 1: UPLOAD'}
               </button>
             ) : (<>
               <div className="panel" style={{ padding: 10, marginBottom: 10, borderColor: 'var(--cyan)' }}>
                 <div style={{ font: '7px var(--font-pixel)', color: 'var(--cyan)' }}>READY — {result.detectedType as string}</div>
               </div>
-              <button className="btn gold" disabled={sub} onClick={async () => { setSub(true); try { await submitFromPackage(result.packageId as string, name); nav('/tasks'); } catch (e) { setErr((e as Error).message); } finally { setSub(false); } }} style={{ width: '100%' }}>
+              <button className="btn gold" disabled={sub} onClick={async () => { setSub(true); setErr(''); try { await submitFromPackage(result.packageId as string, name); nav('/tasks'); } catch (e) { const msg = axios.isAxiosError(e) ? (e.response?.data?.message || e.message) : (e as Error).message; setErr(msg); } finally { setSub(false); } }} style={{ width: '100%' }}>
                 {sub ? 'LAUNCHING...' : 'STAGE 2: DEPLOY'}
               </button>
             </>)}
@@ -69,7 +73,7 @@ export default function SubmitTask() {
               <F label="BATCH" value={form.batchSize} onChange={v => setForm(p => ({ ...p, batchSize: v }))} type="number" />
             </div>
           </details>
-          <button className="btn gold" disabled={sub} onClick={async () => { setSub(true); try { await submitTask({ name: form.name, type: form.type, modelName: form.modelName, datasetPath: form.datasetPath, params: { loraRank: parseInt(form.loraRank), loraAlpha: parseInt(form.loraAlpha), learningRate: parseFloat(form.learningRate), epochs: parseInt(form.epochs), batchSize: parseInt(form.batchSize) } }); nav('/tasks'); } catch (e) { setErr((e as Error).message); } finally { setSub(false); } }} style={{ width: '100%' }}>DEPLOY MISSION</button>
+          <button className="btn gold" disabled={sub} onClick={async () => { setSub(true); setErr(''); try { await submitTask({ name: form.name, type: form.type, modelName: form.modelName, datasetPath: form.datasetPath, params: { loraRank: parseInt(form.loraRank), loraAlpha: parseInt(form.loraAlpha), learningRate: parseFloat(form.learningRate), epochs: parseInt(form.epochs), batchSize: parseInt(form.batchSize) } }); nav('/tasks'); } catch (e) { const msg = axios.isAxiosError(e) ? (e.response?.data?.message || e.message) : (e as Error).message; setErr(msg); } finally { setSub(false); } }} style={{ width: '100%' }}>DEPLOY MISSION</button>
         </>)}
         {err && <div className="panel" style={{ marginTop: 10, padding: 8, borderColor: 'var(--red)', font: '6px var(--font-pixel)', color: 'var(--red)' }}>! {err}</div>}
       </div>

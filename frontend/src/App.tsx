@@ -5,6 +5,7 @@ import TaskList from './pages/TaskList';
 import TaskDetail from './pages/TaskDetail';
 import NodeMonitor from './pages/NodeMonitor';
 import SubmitTask from './pages/SubmitTask';
+import Tutorial from './pages/Tutorial';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/tasks/:taskId" element={<TaskDetail />} />
         <Route path="/nodes" element={<NodeMonitor />} />
         <Route path="/submit" element={<SubmitTask />} />
+        <Route path="/tutorial" element={<Tutorial />} />
       </Routes>
     </Layout>
   );

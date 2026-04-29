@@ -1,0 +1,11 @@
+name: mae-cifar10-pretrain
+type: TRAIN
+model_name: MAE-ViT-Base
+entry_point: train_mae.py
+params:
+  learning_rate: 1.5e-4
+  epochs: 50
+  batch_size: 128
+  mask_ratio: 0.75
+  warmup_epochs: 5
+  total_steps: 0

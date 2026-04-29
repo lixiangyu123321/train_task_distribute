@@ -5,6 +5,7 @@ const nav = [
   { path: '/tasks', label: 'MISSIONS', icon: '◇' },
   { path: '/nodes', label: 'BAYS',    icon: '◈' },
   { path: '/submit', label: 'CARGO',   icon: '◻' },
+  { path: '/tutorial', label: 'GUIDE',  icon: '◉' },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
