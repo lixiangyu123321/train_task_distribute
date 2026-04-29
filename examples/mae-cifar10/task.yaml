@@ -9,4 +9,4 @@ params:
   mask_ratio: 0.75
   warmup_epochs: 2
   total_steps: 0
-  data_dir: /tmp/cifar10-data
+  data_dir: ./data
