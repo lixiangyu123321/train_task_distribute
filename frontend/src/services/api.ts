@@ -49,3 +49,23 @@ export async function submitFromPackage(packageId: string, taskName: string, pri
   });
   return data;
 }
+
+export async function fetchTaskLogs(taskId: string): Promise<{taskId: string; logs: string}> {
+  const { data } = await api.get(`/tasks/${taskId}/logs`);
+  return data.data;
+}
+
+export async function fetchTaskLogsTail(taskId: string, lines = 100): Promise<{taskId: string; logs: string}> {
+  const { data } = await api.get(`/tasks/${taskId}/logs/tail`, { params: { lines } });
+  return data.data;
+}
+
+export async function fetchMetricsHistory(taskId: string): Promise<{taskId: string; history: Record<string,unknown>[]}> {
+  const { data } = await api.get(`/tasks/${taskId}/metrics/history`);
+  return data.data;
+}
+
+export async function fetchQueueStatus(taskId?: string): Promise<{pendingCount:number; queuedCount:number; runningCount:number; queuePosition?:number}> {
+  const { data } = await api.get('/tasks/queue/status', { params: taskId ? { taskId } : {} });
+  return data.data;
+}

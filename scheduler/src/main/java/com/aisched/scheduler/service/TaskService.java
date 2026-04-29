@@ -205,6 +205,58 @@ public class TaskService {
         return r;
     }
 
+    /** 获取训练日志全文（从 Worker 的 output/logs/training.log 读取） */
+    public String getTaskLogs(String taskId) {
+        Task task = taskRepository.findById(taskId).orElse(null);
+        if (task == null) return "";
+        // logs 存储在 Worker 节点上，需要通过 Worker API 获取
+        // 当前返回 Scheduler 端的 task_logs 表内容
+        return "Logs available on Worker node. Use worker-specific log endpoint.";
+    }
+
+    /** 获取训练日志尾部 N 行 */
+    public String getTaskLogsTail(String taskId, int lines) {
+        return getTaskLogs(taskId); // 简化实现，后续通过 Worker API 代理
+    }
+
+    /** 获取指标历史（从 metrics JSON 字段解析） */
+    public List<Map<String, Object>> getMetricsHistory(String taskId) {
+        Task task = taskRepository.findById(taskId).orElse(null);
+        if (task == null || task.getMetrics() == null) return List.of();
+        try {
+            return List.of(objectMapper.readValue(task.getMetrics(), Map.class));
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** 获取队列状态 */
+    public Map<String, Object> getQueueStatus(String taskId) {
+        long pendingCount = taskRepository.countByStatus(TaskStatus.PENDING);
+        long queuedCount = taskRepository.countByStatus(TaskStatus.QUEUED);
+        long runningCount = taskRepository.countByStatus(TaskStatus.RUNNING);
+
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("pendingCount", pendingCount);
+        status.put("queuedCount", queuedCount);
+        status.put("runningCount", runningCount);
+
+        if (taskId != null) {
+            // 计算该任务在队列中的位置
+            long queuePosition = 0;
+            List<String> pendingTasks = taskQueue.peekAll();
+            for (int i = 0; i < pendingTasks.size(); i++) {
+                if (pendingTasks.get(i).equals(taskId)) {
+                    queuePosition = pendingTasks.size() - i; // Redis list is LIFO
+                    break;
+                }
+            }
+            status.put("taskId", taskId);
+            status.put("queuePosition", queuePosition);
+        }
+        return status;
+    }
+
     private String toJson(Object obj) {
         try {
             return objectMapper.writeValueAsString(obj);

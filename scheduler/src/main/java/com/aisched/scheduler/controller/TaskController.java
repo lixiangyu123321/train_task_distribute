@@ -123,6 +123,47 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CREATED).body(buildResponse(201, "任务已提交", data));
     }
 
+    /** 获取任务训练日志 */
+    @GetMapping("/{taskId}/logs")
+    public ResponseEntity<Map<String, Object>> getTaskLogs(@PathVariable String taskId) {
+        String logs = taskService.getTaskLogs(taskId);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("taskId", taskId);
+        data.put("logs", logs);
+        return ResponseEntity.ok(buildResponse(200, "success", data));
+    }
+
+    /** 获取训练日志尾部 N 行 */
+    @GetMapping("/{taskId}/logs/tail")
+    public ResponseEntity<Map<String, Object>> getTaskLogsTail(
+            @PathVariable String taskId,
+            @RequestParam(defaultValue = "100") int lines) {
+        String logs = taskService.getTaskLogsTail(taskId, lines);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("taskId", taskId);
+        data.put("logs", logs);
+        data.put("lines", lines);
+        return ResponseEntity.ok(buildResponse(200, "success", data));
+    }
+
+    /** 获取任务指标历史（metrics.jsonl 内容） */
+    @GetMapping("/{taskId}/metrics/history")
+    public ResponseEntity<Map<String, Object>> getMetricsHistory(@PathVariable String taskId) {
+        var history = taskService.getMetricsHistory(taskId);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("taskId", taskId);
+        data.put("history", history);
+        return ResponseEntity.ok(buildResponse(200, "success", data));
+    }
+
+    /** 获取队列状态（排队任务数 + 位置） */
+    @GetMapping("/queue/status")
+    public ResponseEntity<Map<String, Object>> getQueueStatus(
+            @RequestParam(required = false) String taskId) {
+        var status = taskService.getQueueStatus(taskId);
+        return ResponseEntity.ok(buildResponse(200, "success", status));
+    }
+
     private Map<String, Object> buildResponse(int code, String message, Object data) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", code);

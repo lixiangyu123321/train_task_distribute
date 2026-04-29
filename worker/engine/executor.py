@@ -1,8 +1,9 @@
-"""Worker — 任务执行引擎（subprocess + 进度解析）"""
+"""Worker — 任务执行引擎（标准化workspace + subprocess + 结构化日志）"""
 import asyncio
 import json
 import os
 import re
+import time
 import httpx
 import yaml
 import config
@@ -15,26 +16,29 @@ METRICS_PATTERN = re.compile(r"METRICS:\s*(\{.+\})")
 
 
 async def run_task(task_id: str, task_type: str, download_url: str, workspace: str, params: dict):
-    """从 workspace 中找到 entry_point，通过 subprocess 执行并上报进度"""
-    logger.info(f"Starting task {task_id} type={task_type} workspace={workspace}")
+    """在标准化 workspace 中执行训练脚本，收集结构化输出"""
+    base = workspace
+    input_dir = os.path.join(base, "input")
+    log_file = os.path.join(base, "output", "logs", "training.log")
+    metrics_file = os.path.join(base, "output", "results", "metrics.jsonl")
+    meta_file = os.path.join(base, "meta.json")
+
+    logger.info(f"Task {task_id} type={task_type} workspace={base}")
+    start_time = time.time()
+
+    # 写 meta.json 初始状态
+    _write_meta(meta_file, task_id, task_type, "RUNNING", start_time, {})
 
     await _update_task_status(task_id, "RUNNING")
 
     try:
-        # 读取 task.yaml 获取 entry_point
-        yaml_path = os.path.join(workspace, "task.yaml")
-        entry_point = "train.py"
-        if os.path.exists(yaml_path):
-            with open(yaml_path, "r") as f:
-                yaml_data = yaml.safe_load(f) or {}
-            entry_point = yaml_data.get("entry_point", "train.py")
+        # 在 input/ 中找 entry_point
+        script_path = _find_script(input_dir)
+        if not script_path:
+            raise FileNotFoundError(f"No train*.py found in {input_dir}")
 
-        script_path = os.path.join(workspace, entry_point)
-        if not os.path.exists(script_path):
-            raise FileNotFoundError(f"Entry point not found: {script_path}")
-
-        # 安装额外依赖
-        req_file = os.path.join(workspace, "requirements.txt")
+        # 安装依赖
+        req_file = os.path.join(input_dir, "requirements.txt")
         if os.path.exists(req_file):
             logger.info(f"Installing requirements from {req_file}")
             proc = await asyncio.create_subprocess_exec(
@@ -43,13 +47,14 @@ async def run_task(task_id: str, task_type: str, download_url: str, workspace: s
             )
             await proc.wait()
 
-        # 构建命令行参数（params 可能是 dict 或 JSON string）
+        # params 可能是 dict 或 JSON string
         if isinstance(params, str):
             try:
                 params = json.loads(params)
             except json.JSONDecodeError:
                 params = {}
-        cmd = ["python", script_path]
+
+        cmd = ["/opt/aisched-worker/venv/bin/python", script_path]
         if params:
             for k, v in params.items():
                 cmd.append(f"--{k}")
@@ -57,48 +62,97 @@ async def run_task(task_id: str, task_type: str, download_url: str, workspace: s
 
         logger.info(f"Launching: {' '.join(cmd)}")
 
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            cwd=workspace,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
+        with open(log_file, "w") as lf:
+            lf.write(f"# Task: {task_id}  Type: {task_type}\n")
+            lf.write(f"# Command: {' '.join(cmd)}\n")
+            lf.write(f"# Started: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            lf.write(f"{'='*60}\n\n")
 
-        current_step = 0
-        total_steps = 1000
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=input_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
 
-        async for line in process.stdout:
-            text = line.decode("utf-8", errors="replace").strip()
-            logger.info(f"[{task_id}] {text}")
+            current_step = 0
+            total_steps = 1000
 
-            # 解析进度行: PROGRESS: step=N/TOTAL loss=X.XX
-            m = PROGRESS_PATTERN.search(text)
-            if m:
-                current_step = int(m.group(1))
-                total_steps = int(m.group(2))
-                loss_val = float(m.group(3))
-                percent = round(current_step / total_steps * 100, 1) if total_steps > 0 else 0
-                await _report_progress(task_id, percent, current_step, total_steps)
+            async for line in process.stdout:
+                text = line.decode("utf-8", errors="replace").rstrip()
+                lf.write(text + "\n")
+                lf.flush()
 
-            # 解析指标行: METRICS: {...}
-            m = METRICS_PATTERN.search(text)
-            if m:
-                try:
-                    metrics = json.loads(m.group(1))
-                    await _report_metrics(task_id, metrics)
-                except json.JSONDecodeError:
-                    pass
+                # PROGRESS: step=N/TOTAL loss=X
+                m = PROGRESS_PATTERN.search(text)
+                if m:
+                    current_step = int(m.group(1))
+                    total_steps = int(m.group(2))
+                    percent = round(current_step / total_steps * 100, 1) if total_steps > 0 else 0
+                    await _report_progress(task_id, percent, current_step, total_steps)
 
-        await process.wait()
+                # METRICS: {...}
+                m = METRICS_PATTERN.search(text)
+                if m:
+                    try:
+                        metrics = json.loads(m.group(1))
+                        metrics["timestamp"] = time.time()
+                        with open(metrics_file, "a") as mf:
+                            mf.write(json.dumps(metrics, ensure_ascii=False) + "\n")
+                        await _report_metrics(task_id, metrics)
+                    except json.JSONDecodeError:
+                        pass
 
-        if process.returncode != 0:
-            raise RuntimeError(f"Process exited with code {process.returncode}")
+            await process.wait()
 
+            exit_code = process.returncode
+            elapsed = round(time.time() - start_time, 1)
+            lf.write(f"\n{'='*60}\n")
+            lf.write(f"# Exit code: {exit_code}  Elapsed: {elapsed}s\n")
+
+            if exit_code != 0:
+                raise RuntimeError(f"Process exited with code {exit_code}")
+
+        elapsed = round(time.time() - start_time, 1)
+        _write_meta(meta_file, task_id, task_type, "COMPLETED", start_time,
+                     {"exit_code": exit_code, "elapsed_s": elapsed, "log_file": log_file})
         await _update_task_status(task_id, "COMPLETED")
-        logger.info(f"Task {task_id} completed")
+        logger.info(f"Task {task_id} completed in {elapsed}s")
+
     except Exception as e:
-        logger.error(f"Task {task_id} failed: {e}")
+        elapsed = round(time.time() - start_time, 1)
+        _write_meta(meta_file, task_id, task_type, "FAILED", start_time,
+                     {"error": str(e), "elapsed_s": elapsed})
+        logger.error(f"Task {task_id} failed ({elapsed}s): {e}")
         await _update_task_status(task_id, "FAILED", error_msg=str(e))
+
+
+def _find_script(input_dir: str) -> str | None:
+    """在 input/ 中查找入口脚本"""
+    for name in ("train.py", "finetune.py", "train.sh", "run.py", "main.py"):
+        path = os.path.join(input_dir, name)
+        if os.path.exists(path):
+            return path
+    # 搜索子目录
+    for root, dirs, files in os.walk(input_dir):
+        for f in files:
+            if f.endswith(".py") and f.startswith(("train", "finetune", "run", "main")):
+                return os.path.join(root, f)
+    return None
+
+
+def _write_meta(path: str, task_id: str, task_type: str, status: str, start_time: float, extra: dict):
+    """写/更新 meta.json"""
+    meta = {
+        "task_id": task_id,
+        "type": task_type,
+        "status": status,
+        "started_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(start_time)),
+        "elapsed_s": round(time.time() - start_time, 1),
+        **extra
+    }
+    with open(path, "w") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
 
 
 async def _update_task_status(task_id: str, status: str, error_msg: str = None):
