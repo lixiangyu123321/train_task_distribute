@@ -1,19 +1,21 @@
 import { useApi } from '../hooks/useApi';
 import { fetchDashboard } from '../services/api';
-import NodeCard from '../components/NodeCard';
-import ResourceChart from '../components/ResourceChart';
-import PixelWorker from '../components/PixelWorker';
+import StudioScene from '../components/StudioScene';
 import { useNavigate } from 'react-router-dom';
+import type { NodeItem } from '../types';
 
 export default function Dashboard() {
   const { data: snapshot, loading } = useApi(fetchDashboard, 5000);
   const navigate = useNavigate();
 
-  if (loading && !snapshot) return <div style={{ color: '#b0a0c0', textAlign: 'center', padding: 80, fontFamily: "'Press Start 2P', monospace", fontSize: 10 }}>LOADING...</div>;
-  if (!snapshot) return <div>NO DATA</div>;
+  if (loading && !snapshot) return (
+    <div style={{ textAlign: 'center', padding: 80, color: '#b0a0c0', fontFamily: "'Press Start 2P', monospace", fontSize: 9 }}>
+      LOADING STUDIO...
+    </div>
+  );
+  if (!snapshot) return null;
 
   const { totalTasks, nodes, clusterUtilization } = snapshot;
-  const hasActiveWorkers = nodes.some((n: { resources: { activeTasks: number } }) => (n.resources.activeTasks || 0) > 0);
 
   const cards = [
     { label: 'WAITING', value: totalTasks?.pending || 0, color: '#ffd166', bg: '#fff8e1', emoji: '⏳' },
@@ -25,68 +27,59 @@ export default function Dashboard() {
 
   return (
     <div>
-      {/* 标题 + 像素工人 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-        <PixelWorker state={hasActiveWorkers ? 'working' : 'idle'} size="large" />
-        <div>
-          <h2 style={{ marginBottom: 4 }}>DASHBOARD</h2>
-          <div style={{ fontSize: 10, color: '#b0a0c0', fontFamily: "'Press Start 2P', monospace" }}>
-            {hasActiveWorkers ? '⚡ WORKERS ARE BUSY!' : '💤 ALL QUIET...'}
-          </div>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2>🏭 STUDIO</h2>
+        <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 7, color: '#b0a0c0' }}>
+          GPU AVG: {clusterUtilization}%
+        </span>
       </div>
-      <div className="pixel-divider" />
 
-      {/* 状态卡片 */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        {cards.map(card => (
-          <div key={card.label} onClick={() => {
+      {/* 任务统计条 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        {cards.map(c => (
+          <div key={c.label} onClick={() => {
             const m: Record<string,string> = {WAITING:'PENDING',QUEUED:'QUEUED',RUNNING:'RUNNING',DONE:'COMPLETED',OOPS:'FAILED'};
-            navigate(`/tasks?status=${m[card.label]}`);
+            navigate(`/tasks?status=${m[c.label]}`);
           }}
           className="pixel-card"
           style={{
-            flex: 1, minWidth: 100, padding: '14px 16px', cursor: 'pointer',
-            borderLeft: `4px solid ${card.color}`, background: card.bg,
+            flex: 1, minWidth: 80, padding: '8px 12px',
+            cursor: 'pointer', background: c.bg,
+            borderLeft: `3px solid ${c.color}`,
+            display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <div style={{ fontSize: 18, marginBottom: 4 }}>{card.emoji}</div>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 22, color: card.color }}>
-              {String(card.value).padStart(2, '0')}
-            </div>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 7, color: '#9a8fa8', marginTop: 4 }}>
-              {card.label}
+            <span style={{ fontSize: 16 }}>{c.emoji}</span>
+            <div>
+              <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16, color: c.color }}>
+                {String(c.value).padStart(2, '0')}
+              </span>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 6, color: '#9a8fa8' }}>
+                {c.label}
+              </div>
             </div>
           </div>
         ))}
-        <div className="pixel-card" style={{
-          flex: 1, minWidth: 100, padding: '14px 16px',
-          background: '#f5f0ff', borderLeft: '4px solid #b8a0e8',
-        }}>
-          <div style={{ fontSize: 18, marginBottom: 4 }}>📊</div>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 22, color: '#b8a0e8' }}>
-            {clusterUtilization}%
-          </div>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 7, color: '#9a8fa8', marginTop: 4 }}>
-            GPU AVG
-          </div>
-        </div>
       </div>
 
-      {/* GPU 节点 + 工人 */}
-      {nodes.length > 0 && (
-        <>
-          <h3 style={{ marginBottom: 14 }}>▸ GPU WORKERS</h3>
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
-            {nodes.map((node: Record<string,unknown>) => (
-              <NodeCard key={node.nodeId as string} node={node as never} />
-            ))}
-          </div>
-          <div className="pixel-card" style={{ padding: 20 }}>
-            <h4 style={{ marginBottom: 14 }}>▸ RESOURCES</h4>
-            <ResourceChart nodes={nodes as never[]} />
-          </div>
-        </>
-      )}
+      {/* 工作室场景 */}
+      <StudioScene
+        nodes={(nodes || []) as NodeItem[]}
+        onNodeClick={(node) => navigate('/nodes')}
+      />
+
+      {/* 快速提示 */}
+      <div style={{
+        marginTop: 12, padding: '8px 14px',
+        background: '#f5f0ff', borderRadius: 6, border: '2px solid #e8ddf8',
+        fontFamily: "'Press Start 2P', monospace", fontSize: 6, color: '#8a7aaa',
+        display: 'flex', justifyContent: 'space-between',
+      }}>
+        <span>TIP: CLICK NODE TO VIEW DETAILS</span>
+        <span style={{ cursor: 'pointer', color: '#b8a0e8' }}
+          onClick={() => navigate('/nodes')}>
+          MANAGE NODES ▶
+        </span>
+      </div>
     </div>
   );
 }
