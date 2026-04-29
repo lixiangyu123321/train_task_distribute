@@ -1,0 +1,245 @@
+/* ========================================
+   Pixel Worker — 像素小工人动画
+   ======================================== */
+
+.pixel-worker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 64px;
+  height: 80px;
+}
+
+/* ---- 身体结构 (CSS 像素画) ---- */
+.pw-body {
+  position: relative;
+  width: 32px;
+  height: 52px;
+}
+
+/* 头部 — 12x12 肤色方块 */
+.pw-head {
+  position: absolute;
+  top: 0; left: 10px;
+  width: 14px; height: 14px;
+  background: #ffd5a5;
+  border: 2px solid #e8b88a;
+  border-radius: 2px;
+  image-rendering: pixelated;
+  z-index: 3;
+}
+
+/* 眼睛 */
+.pw-eyes { position: absolute; top: 4px; left: 2px; width: 10px; display: flex; gap: 2px; }
+.pw-eye {
+  width: 4px; height: 4px;
+  background: #333;
+  border-radius: 0;
+}
+
+/* 嘴 */
+.pw-mouth {
+  position: absolute; bottom: 2px; left: 4px;
+  width: 6px; height: 2px;
+  background: #e8887a;
+}
+
+/* 躯干 — 衣服 */
+.pw-torso {
+  position: absolute;
+  top: 14px; left: 8px;
+  width: 16px; height: 18px;
+  background: #5bb5e8;
+  border: 2px solid #4a9cc8;
+  border-radius: 2px;
+  image-rendering: pixelated;
+  z-index: 2;
+}
+
+/* 手臂 */
+.pw-arm {
+  position: absolute;
+  top: 16px;
+  width: 6px; height: 14px;
+  background: #ffd5a5;
+  border: 2px solid #e8b88a;
+  border-radius: 2px;
+  image-rendering: pixelated;
+  z-index: 1;
+  transform-origin: top center;
+}
+.pw-arm--left  { left: 2px; }
+.pw-arm--right { right: 2px; }
+
+/* 腿部 */
+.pw-legs {
+  position: absolute;
+  top: 34px; left: 8px;
+  width: 16px; height: 16px;
+  display: flex; gap: 4px;
+  z-index: 1;
+}
+.pw-leg {
+  width: 6px; height: 14px;
+  background: #5a4a8a;
+  border: 2px solid #4a3a7a;
+  border-radius: 2px;
+  image-rendering: pixelated;
+}
+
+/* 阴影 */
+.pw-shadow {
+  width: 28px; height: 6px;
+  margin-top: 2px;
+  background: rgba(0,0,0,0.12);
+  border-radius: 50%;
+}
+
+/* 道具 — 镐子 */
+.pw-pickaxe {
+  position: absolute;
+  top: -8px; right: -16px;
+  width: 4px; height: 18px;
+  background: #8b6b4a;
+  border-radius: 2px;
+  transform: rotate(-30deg);
+  transform-origin: bottom center;
+}
+.pw-pickaxe::after {
+  content: '';
+  position: absolute; top: -4px; left: -4px;
+  width: 12px; height: 6px;
+  background: #aaa;
+  border: 2px solid #888;
+  border-radius: 2px;
+}
+
+/* 火花 */
+.pw-sparkles { position: absolute; top: -4px; right: -20px; }
+.pw-sparkle {
+  position: absolute; font-size: 8px;
+  color: #ffe600;
+  text-shadow: 0 0 4px #ffaa00;
+}
+.pw-sparkle--1 { top: 0; right: 8px; }
+.pw-sparkle--2 { top: 6px; right: 0; }
+.pw-sparkle--3 { top: 10px; right: 10px; }
+
+/* Zzz */
+.pw-zzz {
+  position: absolute; top: -16px; right: -8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px; color: #888;
+  line-height: 1;
+}
+.pw-zzz span { display: block; }
+
+/* 完成 ★ */
+.pw-done {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  font-size: 16px; color: #ffc107;
+  text-shadow: 0 0 8px #ff9800, 0 2px 0 #e65100;
+}
+
+/* 错误标记 */
+.pw-error-mark {
+  position: absolute; top: -6px; right: -6px;
+  width: 14px; height: 14px;
+  background: #ff5252;
+  border: 2px solid #d32f2f;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* 名称标签 */
+.pw-label {
+  margin-top: 4px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #5a4a8a;
+  text-align: center;
+  max-width: 70px;
+  word-break: break-all;
+}
+
+/* ========================================
+   动画状态
+   ======================================== */
+
+/* IDLE — 微微呼吸 */
+.pixel-worker--idle .pw-body { animation: pwBreathe 2s ease-in-out infinite; }
+@keyframes pwBreathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.03) translateY(-1px); }
+}
+
+/* WORKING — 手臂摆动 + 镐子运动 + 跳跃 */
+.pixel-worker--working .pw-body {
+  animation: pwWorkBounce 0.4s ease-in-out infinite;
+}
+.pixel-worker--working .pw-arm--right {
+  animation: pwArmSwing 0.4s ease-in-out infinite;
+}
+.pixel-worker--working .pw-arm--left {
+  animation: pwArmSwing 0.4s ease-in-out 0.2s infinite;
+}
+.pixel-worker--working .pw-pickaxe {
+  animation: pwPickaxeSwing 0.4s ease-in-out infinite;
+}
+.pixel-worker--working .pw-sparkle--1 { animation: pwSparklePop 0.6s ease-in-out infinite; }
+.pixel-worker--working .pw-sparkle--2 { animation: pwSparklePop 0.6s ease-in-out 0.2s infinite; }
+.pixel-worker--working .pw-sparkle--3 { animation: pwSparklePop 0.6s ease-in-out 0.4s infinite; }
+
+@keyframes pwWorkBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes pwArmSwing {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-25deg); }
+}
+@keyframes pwPickaxeSwing {
+  0%, 100% { transform: rotate(-30deg); }
+  50% { transform: rotate(-60deg); }
+}
+@keyframes pwSparklePop {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+
+/* SLEEPING — Zzz 浮动 */
+.pixel-worker--sleeping .pw-body { animation: pwBreathe 3s ease-in-out infinite; }
+.pixel-worker--sleeping .pw-zzz span {
+  display: block;
+  animation: pwZzzFloat 2s ease-in-out infinite;
+}
+.pixel-worker--sleeping .pw-zzz span:nth-child(2) { animation-delay: 0.4s; }
+.pixel-worker--sleeping .pw-zzz span:nth-child(3) { animation-delay: 0.8s; }
+
+@keyframes pwZzzFloat {
+  0% { opacity: 0; transform: translateY(4px) scale(0.5); }
+  30% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-8px) scale(1.2); }
+}
+
+/* COMPLETED — 星星旋转 */
+.pixel-worker--completed .pw-body { animation: pwBreathe 1.5s ease-in-out infinite; }
+.pixel-worker--completed .pw-done span {
+  display: inline-block;
+  animation: pwStarSpin 1s ease-in-out infinite;
+}
+@keyframes pwStarSpin {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(20deg) scale(1.3); }
+}
+
+/* ERROR — 抖动 */
+.pixel-worker--error .pw-body { animation: pwShake 0.3s ease-in-out infinite; }
+@keyframes pwShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}

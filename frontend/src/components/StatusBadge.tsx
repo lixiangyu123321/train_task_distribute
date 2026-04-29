@@ -1,16 +1,16 @@
 import type { TaskStatus, NodeStatus } from '../types';
 
-const colorMap: Record<string, { bg: string; border: string; text: string; glow: string }> = {
-  PENDING:   { bg: '#2a1a00', border: '#ffe600', text: '#ffe600', glow: '#ffe600' },
-  QUEUED:    { bg: '#001a2a', border: '#00f0ff', text: '#00f0ff', glow: '#00f0ff' },
-  RUNNING:   { bg: '#002a0a', border: '#39ff14', text: '#39ff14', glow: '#39ff14' },
-  COMPLETED: { bg: '#0a1a0a', border: '#39ff14', text: '#39ff14', glow: '#39ff14' },
-  FAILED:    { bg: '#2a000a', border: '#ff2d78', text: '#ff2d78', glow: '#ff2d78' },
-  CANCELLED: { bg: '#1a1a1a', border: '#666', text: '#888', glow: '#666' },
-  ONLINE:    { bg: '#002a0a', border: '#39ff14', text: '#39ff14', glow: '#39ff14' },
-  OFFLINE:   { bg: '#1a1a1a', border: '#666', text: '#888', glow: '#666' },
-  BUSY:      { bg: '#2a1a00', border: '#ffe600', text: '#ffe600', glow: '#ffe600' },
-  ERROR:     { bg: '#2a000a', border: '#ff2d78', text: '#ff2d78', glow: '#ff2d78' },
+const colorMap: Record<string, { bg: string; border: string; text: string; emoji: string }> = {
+  PENDING:   { bg: '#fff8e1', border: '#ffd166', text: '#b8860b', emoji: '⏳' },
+  QUEUED:    { bg: '#e3f2fd', border: '#7ec8e3', text: '#1a6396', emoji: '📋' },
+  RUNNING:   { bg: '#e8f5e9', border: '#8cd790', text: '#2e7d32', emoji: '⚡' },
+  COMPLETED: { bg: '#e8f5e9', border: '#8cd790', text: '#2e7d32', emoji: '✅' },
+  FAILED:    { bg: '#ffebee', border: '#ff8a80', text: '#c62828', emoji: '💥' },
+  CANCELLED: { bg: '#f5f5f5', border: '#ccc', text: '#888', emoji: '🚫' },
+  ONLINE:    { bg: '#e8f5e9', border: '#8cd790', text: '#2e7d32', emoji: '🟢' },
+  OFFLINE:   { bg: '#f5f5f5', border: '#ccc', text: '#888', emoji: '⚫' },
+  BUSY:      { bg: '#fff3e0', border: '#ffd166', text: '#e65100', emoji: '🟡' },
+  ERROR:     { bg: '#ffebee', border: '#ff8a80', text: '#c62828', emoji: '🔴' },
 };
 
 type Props = { status: TaskStatus | NodeStatus };
@@ -20,19 +20,14 @@ export default function StatusBadge({ status }: Props) {
 
   return (
     <span style={{
-      display: 'inline-block',
-      padding: '4px 10px',
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '3px 8px', borderRadius: 4,
       fontFamily: "'Press Start 2P', monospace",
-      fontSize: 8,
-      color: c.text,
-      background: c.bg,
+      fontSize: 7, fontWeight: 400,
+      color: c.text, background: c.bg,
       border: `2px solid ${c.border}`,
-      boxShadow: `3px 3px 0 rgba(0,0,0,0.5), 0 0 10px ${c.glow}33`,
-      imageRendering: 'pixelated',
-      textShadow: `0 0 4px ${c.glow}`,
-      animation: 'neonFlicker 3s infinite',
     }}>
-      [{status}]
+      {c.emoji} {status}
     </span>
   );
 }

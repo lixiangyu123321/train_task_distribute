@@ -1,23 +1,24 @@
 /* ========================================
-   Pixel Arcade Theme — 像素动画风全局样式
+   Pixel Cute Theme — 明亮像素可爱风
    ======================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 :root {
-  --neon-pink: #ff2d78;
-  --neon-cyan: #00f0ff;
-  --neon-green: #39ff14;
-  --neon-yellow: #ffe600;
-  --neon-purple: #b44dff;
-  --neon-orange: #ff6b2b;
-  --bg-dark: #0a0a12;
-  --bg-panel: #111122;
-  --bg-card: #161630;
-  --border-pixel: #2a2a50;
-  --text-primary: #e0e0f0;
-  --text-dim: #6666aa;
-  --pixel-size: 4px;
+  --c-bg: #faf5ef;
+  --c-panel: #fffdf7;
+  --c-card: #ffffff;
+  --c-border: #d4c8b8;
+  --c-text: #4a3f5c;
+  --c-dim: #9a8fa8;
+  --c-pink: #ff7eb3;
+  --c-mint: #5ce0c8;
+  --c-lavender: #b8a0e8;
+  --c-yellow: #ffd166;
+  --c-coral: #ff8a80;
+  --c-blue: #7ec8e3;
+  --c-green: #8cd790;
+  --c-red: #ff6b6b;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,166 +26,121 @@
 body {
   font-family: 'Courier New', 'Source Code Pro', monospace;
   font-size: 13px;
-  color: var(--text-primary);
-  background: var(--bg-dark);
-  -webkit-font-smoothing: none;
-  image-rendering: pixelated;
-  overflow-x: hidden;
-}
-
-/* 扫描线覆盖 */
-body::after {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: repeating-linear-gradient(0deg,
-    transparent, transparent 2px,
-    rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
-  pointer-events: none; z-index: 9999;
-}
-
-/* CRT 边角暗角 */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.5) 100%);
-  pointer-events: none; z-index: 9998;
+  color: var(--c-text);
+  background: var(--c-bg);
+  background-image:
+    radial-gradient(circle, #f0e8d8 1px, transparent 1px);
+  background-size: 20px 20px;
+  -webkit-font-smoothing: antialiased;
+  image-rendering: auto;
 }
 
 h1, h2, h3, h4 {
   font-family: 'Press Start 2P', monospace;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow: 2px 2px 0 var(--neon-purple), 4px 4px 0 rgba(0,0,0,0.5);
-  color: var(--neon-cyan);
+  letter-spacing: 1px;
 }
+h2 { font-size: 13px; color: var(--c-text); }
+h3 { font-size: 10px; color: #5a4a8a; }
+h4 { font-size: 9px; color: #6a5a9a; }
 
-h2 { font-size: 14px; }
-h3 { font-size: 11px; color: var(--neon-pink); }
-h4 { font-size: 10px; }
-
-a { color: var(--neon-cyan); text-decoration: none; }
-a:hover { color: var(--neon-pink); text-shadow: 0 0 8px var(--neon-pink); }
+a { color: #7e5ab8; text-decoration: none; }
 
 button {
   font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  cursor: pointer;
-  text-transform: uppercase;
-  image-rendering: pixelated;
+  font-size: 9px; cursor: pointer;
 }
 
-input, select, textarea {
+input, select {
   font-family: 'Courier New', monospace;
-  background: var(--bg-dark);
-  color: var(--neon-cyan);
-  border: 2px solid var(--border-pixel);
-  outline: none;
+  background: #fffdf7; color: var(--c-text);
+  border: 2px solid var(--c-border);
+  border-radius: 4px; outline: none;
 }
 input:focus, select:focus {
-  border-color: var(--neon-pink);
-  box-shadow: 0 0 8px rgba(255,45,120,0.4), inset 0 0 8px rgba(255,45,120,0.1);
+  border-color: var(--c-lavender);
+  box-shadow: 0 0 0 3px rgba(184,160,232,0.2);
 }
 
 table { border-collapse: collapse; }
 
-/* 像素滚动条 */
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-track { background: #f0e8d8; }
 ::-webkit-scrollbar-thumb {
-  background: var(--neon-purple);
-  border: 2px solid var(--bg-dark);
+  background: var(--c-lavender); border-radius: 4px;
+  border: 2px solid #f0e8d8;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--neon-pink); }
 
-/* 像素卡片 */
+/* ===== 像素卡片 ===== */
 .pixel-card {
-  background: var(--bg-card);
-  border: 3px solid var(--border-pixel);
+  background: var(--c-card);
+  border: 3px solid var(--c-border);
+  border-radius: 6px;
   box-shadow:
-    4px 4px 0 rgba(0,0,0,0.6),
-    0 0 20px rgba(180,77,255,0.1),
-    inset 0 1px 0 rgba(255,255,255,0.03);
-  image-rendering: pixelated;
+    4px 4px 0 rgba(180,160,140,0.3),
+    0 2px 12px rgba(0,0,0,0.04);
+  transition: all 0.15s ease;
 }
 .pixel-card:hover {
-  border-color: var(--neon-purple);
-  box-shadow:
-    4px 4px 0 rgba(180,77,255,0.4),
-    0 0 30px rgba(180,77,255,0.2);
+  border-color: var(--c-lavender);
+  box-shadow: 4px 4px 0 rgba(184,160,232,0.4), 0 4px 20px rgba(184,160,232,0.15);
   transform: translate(-2px, -2px);
-  transition: all 0.1s steps(2);
 }
 
-/* 像素按钮 */
+/* ===== 像素按钮 ===== */
 .pixel-btn {
-  background: var(--neon-purple);
-  color: #fff;
-  border: none;
+  background: var(--c-lavender); color: #fff;
+  border: none; border-radius: 4px;
   padding: 10px 20px;
-  box-shadow: 4px 4px 0 #6a1b9a, 0 0 12px rgba(180,77,255,0.3);
-  transition: all 0.1s steps(2);
+  box-shadow: 3px 3px 0 #9a80c8, 0 0 0 rgba(0,0,0,0);
+  transition: all 0.1s;
 }
 .pixel-btn:hover {
-  background: var(--neon-pink);
-  box-shadow: 3px 3px 0 #8a1a3a, 0 0 20px rgba(255,45,120,0.5);
+  background: #c8a0f0;
+  box-shadow: 2px 2px 0 #8a70b8;
   transform: translate(1px, 1px);
 }
 .pixel-btn:active {
-  box-shadow: 1px 1px 0 #6a1b9a;
+  box-shadow: 0px 0px 0 #8a70b8;
   transform: translate(3px, 3px);
 }
-.pixel-btn.green {
-  background: var(--neon-green); color: #000; box-shadow: 4px 4px 0 #1a7a1a;
-}
-.pixel-btn.cyan {
-  background: var(--neon-cyan); color: #000; box-shadow: 4px 4px 0 #0a6a6a;
-}
+.pixel-btn.green { background: var(--c-green); box-shadow: 3px 3px 0 #6ab870; }
+.pixel-btn.cyan  { background: var(--c-blue); box-shadow: 3px 3px 0 #5a9ab8; }
+.pixel-btn.pink  { background: var(--c-pink); box-shadow: 3px 3px 0 #d86a90; }
 
-/* 像素进度条 */
+/* ===== 像素进度条 ===== */
 .pixel-progress {
-  height: 20px;
-  background: var(--bg-dark);
-  border: 2px solid var(--border-pixel);
-  position: relative;
+  height: 16px;
+  background: #f0e8d8;
+  border: 2px solid var(--c-border);
+  border-radius: 4px;
   overflow: hidden;
 }
 .pixel-progress-inner {
-  height: 100%;
+  height: 100%; border-radius: 2px;
   background: repeating-linear-gradient(90deg,
-    var(--neon-green) 0px, var(--neon-green) 6px,
-    #1a8a1a 6px, #1a8a1a 8px);
-  animation: pixelStripes 0.5s linear infinite;
-  box-shadow: inset 0 0 10px rgba(57,255,20,0.5);
+    var(--c-green) 0px, var(--c-green) 8px,
+    #6ab870 8px, #6ab870 10px);
+  animation: progressStripes 0.8s linear infinite;
+  transition: width 0.3s ease;
 }
-@keyframes pixelStripes { 100% { background-position: 14px 0; } }
+@keyframes progressStripes { 100% { background-position: 18px 0; } }
 
-/* 霓虹闪烁 */
-@keyframes neonFlicker {
-  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
-  20%, 24%, 55% { opacity: 0.6; }
-}
-.neon-text {
-  animation: neonFlicker 3s infinite;
-  text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink), 0 0 20px var(--neon-purple);
-}
-
-/* 像素分隔线 */
+/* ===== 像素分隔线 ===== */
 .pixel-divider {
-  height: 4px;
+  height: 3px;
   background: repeating-linear-gradient(90deg,
-    var(--neon-purple) 0px, var(--neon-purple) 8px,
-    transparent 8px, transparent 12px);
-  margin: 16px 0;
+    var(--c-lavender) 0px, var(--c-lavender) 6px,
+    transparent 6px, transparent 10px);
+  margin: 12px 0;
 }
 
-/* glitch 动画 */
-@keyframes glitch {
-  0% { transform: translate(0); }
-  20% { transform: translate(-3px, 2px); }
-  40% { transform: translate(3px, -1px); }
-  60% { transform: translate(-2px, -2px); }
-  80% { transform: translate(1px, 1px); }
-  100% { transform: translate(0); }
+/* ===== 动画 ===== */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
-.glitch:hover { animation: glitch 0.3s steps(3); }
+@keyframes pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}

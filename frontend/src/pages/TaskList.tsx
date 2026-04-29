@@ -19,49 +19,47 @@ export default function TaskList() {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ marginBottom: 6 }}>TASK LIST</h2>
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ marginBottom: 4 }}>📋 TASK LIST</h2>
         <div className="pixel-divider" />
       </div>
 
-      {/* 筛选按钮 */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-        {statusOptions.map(s => (
-          <button key={s} onClick={() => { setStatus(s); setPage(1); }}
-            style={{
-              fontFamily: "'Press Start 2P', monospace", fontSize: 8,
-              padding: '8px 14px',
-              border: `2px solid ${status === s ? '#b44dff' : '#2a2a50'}`,
-              background: status === s ? 'rgba(180,77,255,0.15)' : '#111',
-              color: status === s ? '#b44dff' : '#6666aa',
-              boxShadow: status === s ? '0 0 10px rgba(180,77,255,0.3)' : 'none',
-              cursor: 'pointer',
-              textShadow: status === s ? '0 0 4px #b44dff' : 'none',
-            }}>
-            {s || 'ALL'}
-          </button>
-        ))}
+      {/* 筛选 */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
+        {statusOptions.map(s => {
+          const active = status === s;
+          return (
+            <button key={s} onClick={() => { setStatus(s); setPage(1); }}
+              style={{
+                fontFamily: "'Press Start 2P', monospace", fontSize: 7,
+                padding: '7px 12px', borderRadius: 4,
+                border: `2px solid ${active ? '#b8a0e8' : '#e0d6c8'}`,
+                background: active ? '#f5f0ff' : '#fff',
+                color: active ? '#5a4a8a' : '#b0a0c0',
+              }}>
+              {s || '✨ ALL'}
+            </button>
+          );
+        })}
       </div>
 
       {loading && !items.length ? (
-        <div style={{ color: '#00f0ff', fontFamily: "'Press Start 2P', monospace", fontSize: 10 }}>
-          LOADING<span className="neon-text">...</span>
+        <div style={{ textAlign: 'center', padding: 60, color: '#b0a0c0', fontFamily: "'Press Start 2P', monospace", fontSize: 9 }}>
+          LOADING...
         </div>
       ) : (
         <div className="pixel-card" style={{ overflow: 'hidden' }}>
           <table style={{ width: '100%' }}>
             <thead>
               <tr style={{
-                background: '#0d0d1f', fontFamily: "'Press Start 2P', monospace", fontSize: 8,
-                textAlign: 'left', color: '#b44dff',
-                borderBottom: '2px solid #2a2a50',
-                textShadow: '0 0 4px #b44dff44',
+                background: '#fdfaf5', fontFamily: "'Press Start 2P', monospace",
+                fontSize: 8, textAlign: 'left', color: '#8a7aaa',
+                borderBottom: '2px solid #e0d6c8',
               }}>
                 <th style={{ padding: '12px 14px' }}>ID</th>
                 <th>NAME</th>
                 <th>TYPE</th>
                 <th>STATUS</th>
-                <th>NODE</th>
                 <th>CREATED</th>
               </tr>
             </thead>
@@ -69,23 +67,17 @@ export default function TaskList() {
               {items.map((task: Record<string,unknown>) => (
                 <tr key={task.taskId as string}
                   onClick={() => navigate(`/tasks/${task.taskId}`)}
-                  style={{
-                    borderBottom: '1px solid #1a1a30', cursor: 'pointer',
-                    fontSize: 11, fontFamily: 'monospace',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(180,77,255,0.06)')}
+                  style={{ borderBottom: '1px solid #f0e8d8', cursor: 'pointer', fontSize: 11, fontFamily: 'monospace' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#fdfaf5')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <td style={{ padding: '10px 14px', color: '#6666aa', fontSize: 10 }}>
+                  <td style={{ padding: '10px 14px', color: '#b0a0c0', fontSize: 10 }}>
                     {(task.taskId as string)?.substring(0, 10)}..
                   </td>
-                  <td style={{ color: '#e0e0f0', fontWeight: 600 }}>{task.name as string}</td>
-                  <td style={{ color: '#b44dff' }}>{task.type as string}</td>
+                  <td style={{ fontWeight: 600 }}>{task.name as string}</td>
+                  <td style={{ color: '#b8a0e8' }}>{task.type as string}</td>
                   <td><StatusBadge status={task.status as TaskStatus} /></td>
-                  <td style={{ color: '#888', fontSize: 10 }}>
-                    {(task.nodeId as string)?.substring(0, 8) || '-'}
-                  </td>
-                  <td style={{ color: '#555', fontSize: 10 }}>
+                  <td style={{ color: '#b0a0c0', fontSize: 10 }}>
                     {(task.createdAt as string)?.substring(0, 19)}
                   </td>
                 </tr>
@@ -95,26 +87,17 @@ export default function TaskList() {
         </div>
       )}
 
-      {/* 分页 */}
       {totalPages > 1 && (
-        <div style={{ marginTop: 20, display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(p => p - 1)}
-            className="pixel-btn"
-            style={{ opacity: page <= 1 ? 0.4 : 1, fontSize: 8 }}>
+        <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+            className="pixel-btn" style={{ opacity: page <= 1 ? 0.4 : 1, fontSize: 8 }}>
             ◀ PREV
           </button>
-          <span style={{
-            fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#b44dff',
-          }}>
-            {page} / {totalPages}
+          <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#b8a0e8' }}>
+            {page}/{totalPages}
           </span>
-          <button
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => p + 1)}
-            className="pixel-btn"
-            style={{ opacity: page >= totalPages ? 0.4 : 1, fontSize: 8 }}>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+            className="pixel-btn" style={{ opacity: page >= totalPages ? 0.4 : 1, fontSize: 8 }}>
             NEXT ▶
           </button>
         </div>
