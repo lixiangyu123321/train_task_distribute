@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: ai-scheduler
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+server:
+  port: 8080
+
+# 公网 IP 预留（通过环境变量注入，未配置时默认 localhost）
+aisched:
+  public-ip: ${SCHEDULER_PUBLIC_IP:127.0.0.1}
+  ws-port: ${SCHEDULER_WS_PORT:8081}
+  node:
+    heartbeat-timeout-seconds: 30
+    heartbeat-check-interval-ms: 10000
+  dispatch:
+    poll-interval-ms: 5000
+    lock-timeout-seconds: 5
+  transfer:
+    upload-dir: ${TRANSFER_UPLOAD_DIR:files}
+  extension:
+    claude-enabled: false
