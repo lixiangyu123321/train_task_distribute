@@ -13,42 +13,45 @@ export default function TaskDetail() {
   const { data: queueStatus } = useApi(() => fetchQueueStatus(taskId), 5000);
   const [showLogs, setShowLogs] = useState(false);
 
-  if (loading && !task) return <div>加载中...</div>;
-  if (!task) return <div>任务不存在</div>;
-
-  const isRunning = task.status === 'RUNNING';
+  if (loading && !task) return <div style={{ color: '#00f0ff' }}>LOADING...</div>;
+  if (!task) return <div style={{ color: '#ff2d78' }}>TASK NOT FOUND</div>;
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>
-        任务详情: {task.name}
-        <span style={{ marginLeft: 12 }}><StatusBadge status={task.status} /></span>
-      </h2>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ marginBottom: 6 }}>
+          [{task.type}] {task.name}
+          <span style={{ marginLeft: 14 }}><StatusBadge status={task.status} /></span>
+        </h2>
+        <div className="pixel-divider" />
+      </div>
 
       <TaskTimeline status={task.status} />
 
       {/* 排队位置 */}
-      {queueStatus && queueStatus.queuePosition !== undefined && queueStatus.queuePosition > 0 && (
+      {queueStatus && (queueStatus.queuePosition as number) > 0 && (
         <div style={{
-          background: '#fff7e6', borderRadius: 8, padding: '12px 20px',
-          marginTop: 16, border: '1px solid #ffd591', fontSize: 14,
+          background: 'rgba(255,230,0,0.06)', border: '2px solid #ffe600',
+          padding: '12px 18px', marginTop: 16,
+          fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#ffe600',
         }}>
-          当前排队位置: 第 <b>{queueStatus.queuePosition}</b> 位 |
-          前方等待: {task.status === 'QUEUED' ? queueStatus.queuePosition - 1 : 0} 个 |
-          运行中: {queueStatus.runningCount} 个
+          QUEUE POSITION: #{(queueStatus.queuePosition as number)} |
+          RUNNING: {queueStatus.runningCount as number}
         </div>
       )}
 
-      {/* 运行中：日志查看器 */}
-      {isRunning && (
+      {/* 实时日志按钮 */}
+      {(task.status === 'RUNNING' || task.status === 'QUEUED') && (
         <div style={{ marginTop: 16 }}>
           <button
             onClick={() => setShowLogs(!showLogs)}
+            className="pixel-btn"
             style={{
-              padding: '8px 20px', background: showLogs ? '#e94560' : '#1a1a2e',
-              color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13,
+              background: showLogs ? '#ff2d78' : '#1a1a2e',
+              boxShadow: showLogs ? '4px 4px 0 #8a1a3a' : '4px 4px 0 #000',
+              fontSize: 9,
             }}>
-            {showLogs ? '收起日志' : '查看实时日志'}
+            {showLogs ? '[ HIDE LOGS ]' : '[ VIEW LIVE LOGS ]'}
           </button>
           {showLogs && (
             <div style={{ marginTop: 12 }}>
@@ -58,42 +61,49 @@ export default function TaskDetail() {
         </div>
       )}
 
-      <div style={{
-        background: '#fff', borderRadius: 8, padding: 24,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 24,
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      {/* 元数据 */}
+      <div className="pixel-card" style={{ padding: 20, marginTop: 20 }}>
+        <table style={{ width: '100%' }}>
           <tbody>
             {[
-              ['任务 ID', task.taskId],
-              ['类型', task.type],
-              ['模型', task.modelName || '-'],
-              ['包 ID', task.packageId ? task.packageId.substring(0, 16) + '...' : '-'],
-              ['分发节点', task.nodeId ? task.nodeId.substring(0, 16) + '...' : '-'],
-              ['创建时间', task.createdAt],
-              ['开始时间', task.startedAt || '-'],
-              ['完成时间', task.finishedAt || '-'],
-              ['错误信息', task.errorMsg || '-'],
+              ['TASK ID', task.taskId],
+              ['TYPE', task.type],
+              ['MODEL', task.modelName || '-'],
+              ['PACKAGE', task.packageId?.substring(0, 16) + '...' || '-'],
+              ['NODE', task.nodeId?.substring(0, 16) + '...' || '-'],
+              ['CREATED', task.createdAt],
+              ['STARTED', task.startedAt || '-'],
+              ['FINISHED', task.finishedAt || '-'],
+              ['ERROR', task.errorMsg || '-'],
             ].map(([label, value]) => (
-              <tr key={label} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                <td style={{ padding: '10px 12px', color: '#888', width: 120 }}>{label}</td>
-                <td style={{ padding: '10px 12px' }}>{value}</td>
+              <tr key={label} style={{ borderBottom: '1px solid #1a1a30' }}>
+                <td style={{
+                  padding: '10px 12px', color: '#6666aa', width: 100,
+                  fontFamily: "'Press Start 2P', monospace", fontSize: 7,
+                }}>{label}</td>
+                <td style={{
+                  padding: '10px 12px', color: label === 'ERROR' && value !== '-' ? '#ff2d78' : '#e0e0f0',
+                  fontFamily: 'monospace', fontSize: 11,
+                  wordBreak: 'break-all',
+                }}>{value}</td>
               </tr>
             ))}
             {task.progress && (
               <tr>
-                <td style={{ padding: '10px 12px', color: '#888' }}>进度</td>
+                <td style={{
+                  padding: '10px 12px', color: '#6666aa',
+                  fontFamily: "'Press Start 2P', monospace", fontSize: 7,
+                }}>PROGRESS</td>
                 <td style={{ padding: '10px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ flex: 1, background: '#f0f0f0', borderRadius: 4, height: 8 }}>
-                      <div style={{
-                        width: `${task.progress.percent}%`, height: 8, borderRadius: 4,
-                        background: '#52c41a',
-                      }} />
+                    <div className="pixel-progress" style={{ flex: 1 }}>
+                      <div className="pixel-progress-inner" style={{ width: `${task.progress.percent}%` }} />
                     </div>
-                    <span>{task.progress.percent}%</span>
-                    <span style={{ color: '#888' }}>
-                      {task.progress.currentStep}/{task.progress.totalSteps} steps
+                    <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#39ff14' }}>
+                      {task.progress.percent}%
+                    </span>
+                    <span style={{ color: '#666', fontSize: 10 }}>
+                      {task.progress.currentStep}/{task.progress.totalSteps}
                     </span>
                   </div>
                 </td>
@@ -105,16 +115,18 @@ export default function TaskDetail() {
 
       {/* 指标图表 */}
       {task.metrics && (
-        <div style={{
-          background: '#fff', borderRadius: 8, padding: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 24,
-        }}>
+        <div className="pixel-card" style={{ padding: 20, marginTop: 20 }}>
+          <h4 style={{ marginBottom: 12 }}>▸ METRICS</h4>
           <MetricsChart metrics={[task.metrics]} />
-          <div style={{ marginTop: 16, fontSize: 13, color: '#666' }}>
+          <div style={{
+            marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: '12px 24px',
+            fontFamily: 'monospace', fontSize: 10,
+          }}>
             {Object.entries(task.metrics as Record<string, unknown>).map(([k, v]) => (
-              <span key={k} style={{ marginRight: 24 }}>
-                <b>{k}</b>: {String(v)}
-              </span>
+              <div key={k}>
+                <span style={{ color: '#6666aa' }}>{k}:</span>{' '}
+                <span style={{ color: '#b44dff' }}>{String(v)}</span>
+              </div>
             ))}
           </div>
         </div>
