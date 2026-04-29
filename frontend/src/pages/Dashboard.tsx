@@ -1,6 +1,6 @@
 import { useApi } from '../hooks/useApi';
 import { fetchDashboard } from '../services/api';
-import StudioScene from '../components/StudioScene';
+import StudioCanvas from '../components/StudioCanvas';
 import { useNavigate } from 'react-router-dom';
 import type { NodeItem } from '../types';
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
       </div>
 
       {/* 工作室场景 — 传入真实任务计数 */}
-      <StudioScene
+      <StudioCanvas
         nodes={(nodes || []) as NodeItem[]}
         pendingTasks={pending}
         queuedTasks={queued}
