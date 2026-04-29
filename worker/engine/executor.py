@@ -37,12 +37,12 @@ async def run_task(task_id: str, task_type: str, download_url: str, workspace: s
         if not script_path:
             raise FileNotFoundError(f"No train*.py found in {input_dir}")
 
-        # 安装依赖
+        # 安装依赖 — 使用 venv 中的 pip 确保安装到正确位置
         req_file = os.path.join(input_dir, "requirements.txt")
         if os.path.exists(req_file):
             logger.info(f"Installing requirements from {req_file}")
             proc = await asyncio.create_subprocess_exec(
-                "pip", "install", "-r", req_file, "-q",
+                "/opt/aisched-worker/venv/bin/python", "-m", "pip", "install", "-r", req_file, "-q",
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
             )
             await proc.wait()
