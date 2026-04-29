@@ -91,10 +91,13 @@ def get_2d_sincos_pos_embed(embed_dim: int, grid_size: int) -> torch.Tensor:
 
 
 def _get_1d_sincos_pos_embed(embed_dim: int, pos: torch.Tensor) -> torch.Tensor:
-    omega = torch.arange(embed_dim // 2, dtype=torch.float32) / (embed_dim // 2)
-    omega = 1.0 / (10000 ** omega)
-    out = pos.transpose(0, 1) * omega.unsqueeze(1)
-    return torch.cat([torch.sin(out), torch.cos(out)], dim=-1).squeeze(1)
+    # embed_dim: 输出维度 (调用方已将其减半), pos shape: (1, N)
+    # omega 取 embed_dim//2 个频率, sin+cos 合并后恢复为 embed_dim
+    half = embed_dim // 2
+    omega = torch.arange(half, dtype=torch.float32) / half
+    omega = 1.0 / (10000 ** omega)  # (half,)
+    out = pos.reshape(-1, 1) * omega.reshape(1, -1)  # (N, half)
+    return torch.cat([torch.sin(out), torch.cos(out)], dim=-1)  # (N, embed_dim)
 
 
 class MLP(nn.Module):
@@ -224,8 +227,17 @@ class MaskedAutoencoder(nn.Module):
         latent, mask, ids_restore = self.forward_encoder(imgs)
         return self.forward_decoder(latent, ids_restore), mask
 
+    def patchify(self, imgs: torch.Tensor) -> torch.Tensor:
+        """将图像切分为 patches 并 flatten (无投影) → (B, N, P*P*C)"""
+        p = self.patch_size
+        B, C, H, W = imgs.shape
+        # (B, C, H, W) → (B, C, H//p, p, W//p, p) → (B, H//p, W//p, p, p, C) → (B, N, p*p*C)
+        x = imgs.reshape(B, C, H // p, p, W // p, p)
+        x = x.permute(0, 2, 4, 3, 5, 1).reshape(B, -1, p * p * C)
+        return x
+
     def forward_loss(self, imgs: torch.Tensor, pred: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        target = self.patch_embed(imgs)
+        target = self.patchify(imgs)  # (B, N, p*p*C) = (B, 64, 48)
         loss = (pred - target) ** 2
         loss = (loss.mean(dim=-1) * mask).sum() / mask.sum()
         return loss
