@@ -1,15 +1,12 @@
 import { useRef, useEffect } from 'react';
 import type { NodeItem } from '../types';
 
-// ── 像素精灵绘制工具 ──
-const P = 2; // 像素缩放倍率
+/* ── 16×16 太空工人精灵 ── */
 type Sprite = number[][];
-
-// 16x16 工人精灵 (1=肤色 2=衣服 3=裤子 4=头发 5=眼睛 6=镐子 7=火花)
-const WORKER_IDLE: Sprite = [
-  [0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0],
-  [0,0,0,0,0,4,4,1,1,4,4,0,0,0,0,0],
-  [0,0,0,0,4,1,1,1,1,1,1,4,0,0,0,0],
+const SPACE_IDLE: Sprite = [
+  [0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0],
+  [0,0,0,0,4,4,4,1,1,4,4,4,0,0,0,0],
+  [0,0,0,4,4,1,1,1,1,1,1,4,4,0,0,0],
   [0,0,0,4,1,1,5,1,1,5,1,1,4,0,0,0],
   [0,0,0,4,1,1,1,1,1,1,1,1,4,0,0,0],
   [0,0,0,0,4,2,2,2,2,2,2,4,0,0,0,0],
@@ -18,37 +15,35 @@ const WORKER_IDLE: Sprite = [
   [0,0,0,0,0,4,4,4,4,4,4,0,0,0,0,0],
   [0,0,0,0,0,3,3,3,3,3,3,0,0,0,0,0],
   [0,0,0,0,3,3,3,3,3,3,3,3,0,0,0,0],
-  [0,0,0,0,3,3,3,0,0,3,3,3,0,0,0,0],
-  [0,0,0,0,3,3,0,0,0,0,3,3,0,0,0,0],
-  [0,0,0,0,3,3,0,0,0,0,3,3,0,0,0,0],
-  [0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0],
-  [0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0],
-];
-
-const WORKER_WORK1: Sprite = [
-  [0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0],
-  [0,0,0,0,0,4,4,1,1,4,4,0,0,0,0,0],
-  [0,0,0,0,4,1,1,1,1,1,1,4,0,0,0,0],
-  [0,0,0,4,1,1,5,1,1,5,1,1,4,0,0,0],
-  [0,0,0,4,1,1,1,1,1,1,1,1,4,0,0,0],
-  [0,0,0,0,4,2,2,2,2,2,2,4,6,6,0,0], // 手臂举起+镐子
-  [0,0,0,0,4,2,2,2,2,2,2,4,6,6,0,0],
-  [0,0,0,0,4,2,2,2,2,2,2,4,0,0,0,0],
-  [0,0,0,0,0,4,4,4,4,4,4,0,7,0,0,0], // 火花
-  [0,0,0,0,0,3,3,3,3,3,3,0,7,0,0,0],
-  [0,0,0,0,3,3,3,3,3,3,3,3,0,0,0,0],
-  [0,0,0,0,3,3,3,0,0,3,3,3,0,0,0,0],
-  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0], // 腿部张开的姿态
+  [0,0,0,3,3,3,0,0,0,0,3,3,3,0,0,0],
   [0,0,0,3,3,0,0,0,0,0,0,3,3,0,0,0],
-  [0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0],
+  [0,0,0,3,3,0,0,0,0,0,0,3,3,0,0,0],
+  [0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0],
   [0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0],
 ];
-
-const WORKER_SLEEP: Sprite = [
-  [0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0],
-  [0,0,0,0,0,4,4,1,1,4,4,0,0,0,0,0],
-  [0,0,0,0,4,1,1,1,1,1,1,4,0,0,0,0],
-  [0,0,0,4,5,5,0,1,1,0,5,5,4,0,0,0], // 闭眼
+const SPACE_WORK: Sprite = [
+  [0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0],
+  [0,0,0,0,4,4,4,1,1,4,4,4,0,0,0,0],
+  [0,0,0,4,4,1,1,1,1,1,1,4,4,6,6,0],
+  [0,0,0,4,1,1,5,1,1,5,1,1,4,6,6,0],
+  [0,0,0,4,1,1,1,1,1,1,1,1,4,0,0,0],
+  [0,0,0,0,4,2,2,2,2,2,2,4,0,0,0,0],
+  [0,0,0,0,4,2,2,2,2,2,2,4,0,0,0,0],
+  [0,0,0,0,4,2,2,2,2,2,2,4,7,0,0,0],
+  [0,0,0,0,0,4,4,4,4,4,4,0,7,0,0,0],
+  [0,0,0,0,0,3,3,3,3,3,3,0,0,0,0,0],
+  [0,0,0,0,3,3,3,3,3,3,3,3,0,0,0,0],
+  [0,0,0,3,3,3,0,0,0,0,3,3,3,0,0,0],
+  [0,0,3,3,0,0,0,0,0,0,0,0,3,3,0,0],
+  [0,0,3,0,0,0,0,0,0,0,0,0,0,3,0,0],
+  [0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0],
+  [0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+];
+const SPACE_SLEEP: Sprite = [
+  [0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0],
+  [0,0,0,0,4,4,4,1,1,4,4,4,0,0,0,0],
+  [0,0,0,4,4,1,1,1,1,1,1,4,4,0,0,0],
+  [0,0,0,4,5,5,0,1,1,0,5,5,4,0,0,0],
   [0,0,0,4,1,1,1,1,1,1,1,1,4,0,0,0],
   [0,0,0,0,4,2,2,2,2,2,2,4,0,0,0,0],
   [0,0,0,0,4,2,2,2,2,2,2,4,0,0,0,0],
@@ -62,368 +57,258 @@ const WORKER_SLEEP: Sprite = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0],
 ];
-
-const COLORS: Record<number, string> = {
-  1: '#ffd5a5', 2: '#5bb5e8', 3: '#5a4a8a',
-  4: '#8b6b4a', 5: '#333', 6: '#aaa', 7: '#ffe600',
-};
-
-function drawSprite(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number, scale = 2, alpha = 1) {
-  ctx.globalAlpha = alpha;
-  for (let row = 0; row < sprite.length; row++) {
-    for (let col = 0; col < sprite[row].length; col++) {
-      const c = sprite[row][col];
-      if (c && COLORS[c]) {
-        ctx.fillStyle = COLORS[c];
-        ctx.fillRect(Math.floor(x + col * scale), Math.floor(y + row * scale), scale, scale);
-      }
-    }
+const PAL: Record<number,string> = {1:'#ffd5a5',2:'#4060c0',3:'#304090',4:'#6080d0',5:'#000',6:'#c0c0e0',7:'#f0c040'};
+function spr(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: number, sc = 2, a = 1) {
+  ctx.globalAlpha = a;
+  for (let r = 0; r < s.length; r++) for (let c = 0; c < s[r].length; c++) {
+    const v = s[r][c]; if (v && PAL[v]) { ctx.fillStyle = PAL[v]; ctx.fillRect((x + c * sc) | 0, (y + r * sc) | 0, sc, sc); }
   }
   ctx.globalAlpha = 1;
 }
 
-// ── 粒子系统 ──
-interface Particle {
-  x: number; y: number; vx: number; vy: number;
-  life: number; maxLife: number; color: string; size: number;
-}
+/* ── 粒子 ── */
+interface P { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; }
+interface Pkg { x: number; y: number; phase: number; nodeIdx: number; alpha: number; bounce: number; }
 
-// ── 包裹 ──
-interface PackageAnim {
-  x: number; y: number; phase: number; targetX: number; targetY: number;
-  nodeIdx: number; alpha: number; bounce: number;
-}
-
-// ── React 组件 ──
-type Props = {
-  nodes: NodeItem[];
-  pendingTasks: number;
-  queuedTasks: number;
-  runningTasks: number;
-  onNodeClick?: (node: NodeItem) => void;
-};
+type Props = { nodes: NodeItem[]; pendingTasks: number; queuedTasks: number; runningTasks: number; onNodeClick?: (n: NodeItem) => void; };
 
 export default function StudioCanvas({ nodes, pendingTasks, queuedTasks, runningTasks, onNodeClick }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animRef = useRef<number>(0);
-  const particlesRef = useRef<Particle[]>([]);
-  const packagesRef = useRef<PackageAnim[]>([]);
-  const frameRef = useRef(0);
-  const spawnTimerRef = useRef(0);
-
+  const ref = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef(0);
+  const particles = useRef<P[]>([]);
+  const packages = useRef<Pkg[]>([]);
+  const frame = useRef(0);
+  const spawnT = useRef(0);
   const hasActivity = (pendingTasks + queuedTasks + runningTasks) > 0;
-  const onlineNodes = nodes.filter(n => n.status === 'ONLINE');
+  const online = nodes.filter(n => n.status === 'ONLINE');
   const total = nodes.length;
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
+    const cvs = ref.current; if (!cvs) return;
+    const ctx = cvs.getContext('2d')!;
     const dpr = window.devicePixelRatio || 1;
 
     const resize = () => {
-      const rect = canvas.parentElement!.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = 340 * dpr;
-      canvas.style.width = rect.width + 'px';
-      canvas.style.height = '340px';
+      const r = cvs.parentElement!.getBoundingClientRect();
+      cvs.width = r.width * dpr; cvs.height = 340 * dpr;
+      cvs.style.width = r.width + 'px'; cvs.style.height = '340px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    resize();
-    window.addEventListener('resize', resize);
+    resize(); window.addEventListener('resize', resize);
 
-    const spawnPkg = () => {
-      if (pendingTasks <= 0 || onlineNodes.length === 0) return;
-      const target = Math.floor(Math.random() * onlineNodes.length);
-      packagesRef.current.push({
-        x: 60, y: 110, phase: 0, targetX: 0, targetY: 0,
-        nodeIdx: target, alpha: 1, bounce: 0,
+    const emit = (x: number, y: number, n: number, col: string) => {
+      for (let i = 0; i < n; i++) particles.current.push({
+        x, y, vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 3 - 1,
+        life: 1, maxLife: 0.4 + Math.random() * 0.4, color: col, size: 2 + Math.random() * 3,
       });
-      // 限制包裹数量
-      if (packagesRef.current.length > 8) packagesRef.current.shift();
     };
 
-    const emitSparks = (x: number, y: number, count: number) => {
-      for (let i = 0; i < count; i++) {
-        particlesRef.current.push({
-          x, y,
-          vx: (Math.random() - 0.5) * 3,
-          vy: -Math.random() * 3 - 1,
-          life: 1, maxLife: 0.5 + Math.random() * 0.5,
-          color: Math.random() > 0.5 ? '#ffe600' : '#ffa726',
-          size: 2 + Math.random() * 3,
-        });
-      }
+    const spawn = () => {
+      if (pendingTasks <= 0 || online.length === 0) return;
+      const t = Math.floor(Math.random() * online.length);
+      packages.current.push({ x: 40, y: 100, phase: 0, nodeIdx: t, alpha: 1, bounce: 0 });
+      if (packages.current.length > 10) packages.current.shift();
     };
-
-    const W = () => canvas.width / dpr;
-    const nodePositions = total > 0
-      ? Array.from({ length: total }, (_, i) => ({
-          x: W - 100 - (total - 1 - i) * 80,
-          y: 90,
-        }))
-      : [];
 
     const render = () => {
-      const w = canvas.width / dpr;
-      const h = canvas.height / dpr;
-      const f = frameRef.current;
-      frameRef.current++;
+      const W = cvs.width / dpr, H = cvs.height / dpr, f = frame.current++;
+      ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, W, H);
 
-      // 清屏 — 奶油背景
-      ctx.fillStyle = '#faf5ef';
-      ctx.fillRect(0, 0, w, h);
+      // 星场
+      const starSeed = [3,17,29,41,53,67,79,97,103,113,127,139,149,163,179,191,199,211,227,239];
+      for (const s of starSeed) {
+        const sx = ((s * 37 + f * 0.02) % W + W) % W;
+        const sy = ((s * 53) % H + H) % H;
+        const bright = 0.3 + 0.3 * Math.sin(f * 0.02 + s);
+        ctx.fillStyle = `rgba(255,255,255,${bright})`;
+        ctx.fillRect(sx, sy, 1 + (s % 3 === 0 ? 1 : 0), 1 + (s % 3 === 0 ? 1 : 0));
+      }
 
       // 网格
-      ctx.strokeStyle = 'rgba(0,0,0,0.03)';
-      ctx.lineWidth = 0.5;
-      for (let x = 0; x < w; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-      for (let y = 0; y < h; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.02)'; ctx.lineWidth = 0.5;
+      for (let x = 0; x < W; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y < H; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
       // 地板
-      const floorY = 240;
-      ctx.fillStyle = '#e8d8c0';
-      ctx.fillRect(0, floorY, w, h - floorY);
-      ctx.strokeStyle = '#d4c8b8';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(w, floorY); ctx.stroke();
-      // 地板纹理
-      for (let x = 0; x < w; x += 48) {
-        ctx.fillStyle = 'rgba(0,0,0,0.03)';
-        ctx.fillRect(x, floorY, 24, h - floorY);
+      const fy = 220;
+      ctx.fillStyle = '#111822';
+      ctx.fillRect(0, fy, W, H - fy);
+      ctx.strokeStyle = 'var(--border)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(W, fy); ctx.stroke();
+      for (let x = 0; x < W; x += 64) {
+        ctx.fillStyle = 'rgba(255,255,255,0.01)'; ctx.fillRect(x, fy, 32, H - fy);
       }
+
+      // 节点位置
+      const npos = total > 0 ? Array.from({ length: total }, (_, i) => ({ x: W - 80 - (total - 1 - i) * 72, y: 80 })) : [];
 
       // ── 传送带 ──
-      const beltY = floorY - 24;
-      ctx.fillStyle = '#c8b8a0';
-      ctx.fillRect(120, beltY, w - 200, 16);
-      ctx.strokeStyle = '#8d6e63';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(120, beltY, w - 200, 16);
+      const by = fy - 22;
+      ctx.fillStyle = '#1a2430'; ctx.fillRect(100, by, W - 180, 18);
+      ctx.strokeStyle = 'var(--border-lit)'; ctx.lineWidth = 2;
+      ctx.strokeRect(100, by, W - 180, 18);
       // 滚轮
-      for (let x = 130; x < w - 80; x += 20) {
-        ctx.fillStyle = '#9e8e84';
-        ctx.fillRect(x, beltY + 2, 8, 12);
+      for (let x = 108; x < W - 80; x += 18) {
+        ctx.fillStyle = '#2a3548'; ctx.fillRect(x, by + 2, 6, 14);
       }
-      // 运动光条
+      // 光条
       if (hasActivity) {
-        const shineX = 130 + ((f * 3) % (w - 240));
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.fillRect(shineX, beltY + 3, 20, 10);
+        const sx = 108 + ((f * 4) % (W - 200)) | 0;
+        const grad = ctx.createLinearGradient(sx, 0, sx + 30, 0);
+        grad.addColorStop(0, 'transparent'); grad.addColorStop(0.5, 'rgba(240,192,64,0.2)'); grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad; ctx.fillRect(sx, by + 3, 30, 12);
       }
 
-      // ── 中转站 ──
-      const stX = 120, stY = 130;
-      ctx.fillStyle = '#ffe0b2';
-      ctx.fillRect(stX - 25, stY, 54, 44);
-      ctx.strokeStyle = '#8d6e63';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(stX - 25, stY, 54, 44);
-      // 屋顶
-      ctx.fillStyle = '#ff8a65';
-      ctx.fillRect(stX - 30, stY - 14, 64, 16);
-      ctx.strokeStyle = '#bf360c';
-      ctx.strokeRect(stX - 30, stY - 14, 64, 16);
+      // ── 空间站中转中心 ──
+      const cx = 120, cy = 110;
+      // 天线
+      ctx.strokeStyle = '#506080'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx, cy - 30); ctx.lineTo(cx, cy - 10); ctx.stroke();
+      ctx.fillStyle = '#f04050';
+      ctx.beginPath(); ctx.arc(cx, cy - 32, 4, 0, Math.PI * 2); ctx.fill();
+      // 主体
+      ctx.fillStyle = '#1c2840'; ctx.fillRect(cx - 22, cy - 5, 46, 60);
+      ctx.strokeStyle = hasActivity ? 'var(--gold)' : 'var(--border-lit)'; ctx.lineWidth = 3;
+      ctx.strokeRect(cx - 22, cy - 5, 46, 60);
+      // 穹顶
+      ctx.fillStyle = '#243050';
+      ctx.beginPath(); ctx.arc(cx + 1, cy - 5, 24, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = hasActivity ? 'var(--gold)' : 'var(--border-lit)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx + 1, cy - 5, 24, Math.PI, 0); ctx.stroke();
+      // 窗户
+      ctx.fillStyle = hasActivity ? '#f0c040' : '#4060a0';
+      ctx.fillRect(cx - 4, cy + 14, 10, 10);
       // 门
-      ctx.fillStyle = hasActivity ? '#ffb74d' : '#5d4037';
-      ctx.fillRect(stX - 7, stY + 22, 16, 22);
-      ctx.strokeStyle = '#3e2723';
-      ctx.strokeRect(stX - 7, stY + 22, 16, 22);
-      // 发光
-      if (hasActivity && f % 60 < 30) {
-        ctx.fillStyle = 'rgba(255,152,0,0.08)';
-        ctx.fillRect(stX - 35, stY - 20, 74, 80);
+      ctx.fillStyle = '#0d1117'; ctx.fillRect(cx - 5, cy + 30, 12, 22);
+      ctx.strokeStyle = 'var(--border-lit)'; ctx.lineWidth = 2;
+      ctx.strokeRect(cx - 5, cy + 30, 12, 22);
+      // 活跃光晕
+      if (hasActivity && f % 50 < 25) {
+        ctx.fillStyle = 'rgba(240,192,64,0.06)';
+        ctx.fillRect(cx - 30, cy - 15, 62, 90);
       }
-      // 标牌
-      ctx.fillStyle = '#5d4037';
-      ctx.fillRect(stX - 20, stY - 22, 42, 10);
-      ctx.fillStyle = '#fff';
-      ctx.font = '6px "Press Start 2P", monospace';
-      ctx.fillText('TRANSFER', stX - 18, stY - 14);
+      // 标签
+      ctx.fillStyle = 'var(--gold)'; ctx.font = '7px "Press Start 2P", monospace';
+      ctx.fillText('HUB', cx - 12, cy - 14);
 
-      // ── 节点工作站 ──
+      // ── 节点舱 ──
       for (let i = 0; i < total; i++) {
-        if (!nodePositions[i]) continue;
-        const nx = nodePositions[i].x, ny = nodePositions[i].y;
+        if (!npos[i]) continue;
+        const nx = npos[i].x, ny = npos[i].y;
         const node = nodes[i];
-        const isWorking = (node.resources?.activeTasks || 0) > 0;
-        const isOffline = node.status === 'OFFLINE';
-        const isError = node.status === 'ERROR';
+        const busy = (node.resources?.activeTasks || 0) > 0;
+        const off = node.status === 'OFFLINE';
+        const err = node.status === 'ERROR';
+        const border = off ? '#405060' : err ? 'var(--red)' : busy ? 'var(--green)' : 'var(--cyan)';
+        const bg = off ? '#141c24' : err ? '#201018' : busy ? '#101c14' : '#141c28';
 
-        // 机箱
-        const boxColor = isOffline ? '#e0e0e0' : isError ? '#ffebee' : isWorking ? '#e8f5e9' : '#f5f0ff';
-        const borderColor = isOffline ? '#bbb' : isError ? '#ef5350' : isWorking ? '#66bb6a' : '#7e6ba0';
-        ctx.fillStyle = boxColor;
-        ctx.fillRect(nx - 24, ny, 52, 44);
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = 3;
-        ctx.strokeRect(nx - 24, ny, 52, 44);
-        // 指示灯
-        const dotColor = isOffline ? '#bbb' : isWorking ? '#ffa726' : isError ? '#ef5350' : '#66bb6a';
-        ctx.fillStyle = dotColor;
-        ctx.beginPath(); ctx.arc(nx + 18, ny + 8, 4, 0, Math.PI * 2); ctx.fill();
+        // 玻璃舱
+        ctx.fillStyle = bg; ctx.fillRect(nx - 24, ny, 50, 50);
+        ctx.strokeStyle = border; ctx.lineWidth = 3; ctx.strokeRect(nx - 24, ny, 50, 50);
+        // 穹顶
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(nx + 1, ny, 26, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = border; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(nx + 1, ny, 26, Math.PI, 0); ctx.stroke();
+        // 天线
+        ctx.strokeStyle = border; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(nx + 1, ny - 26); ctx.lineTo(nx + 1, ny - 34); ctx.stroke();
+        ctx.fillStyle = busy ? 'var(--gold)' : off ? '#405060' : 'var(--cyan)';
+        ctx.beginPath(); ctx.arc(nx + 1, ny - 36, 3, 0, Math.PI * 2); ctx.fill();
         // 屏幕
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(nx - 14, ny + 10, 32, 12);
-        ctx.fillStyle = isOffline ? '#666' : isWorking ? '#ffa726' : isError ? '#ef5350' : '#66bb6a';
+        ctx.fillStyle = '#0a0a14'; ctx.fillRect(nx - 14, ny + 10, 30, 11);
+        ctx.fillStyle = off ? '#506080' : busy ? 'var(--gold)' : err ? 'var(--red)' : 'var(--cyan)';
         ctx.font = '5px "Press Start 2P", monospace';
-        const screenText = isOffline ? 'OFF' : isWorking ? 'BUSY' : isError ? 'ERR' : 'IDLE';
-        ctx.fillText(screenText, nx - 12, ny + 19);
+        ctx.fillText(off ? 'OFF' : busy ? 'WORK' : err ? 'ERR' : 'IDLE', nx - 13, ny + 18);
+        // 工人
+        const sp = off ? SPACE_SLEEP : busy ? SPACE_WORK : SPACE_IDLE;
+        spr(ctx, sp, nx - 12, ny + 46, 1, off ? 0.5 : 1);
         // 名字
-        ctx.fillStyle = '#5a4a8a';
-        ctx.font = '6px "Press Start 2P", monospace';
-        ctx.fillText((node.name || 'NODE').substring(0, 8), nx - 22, ny + 66);
-
-        // 工人精灵
-        const sprite = isOffline ? WORKER_SLEEP : isWorking ? WORKER_WORK1 : WORKER_IDLE;
-        drawSprite(ctx, sprite, nx - 10, ny + 46, 1, isOffline ? 0.6 : 1);
-
-        // 工作脉冲
-        if (isWorking && f % 40 < 20) {
-          ctx.strokeStyle = 'rgba(102,187,106,0.3)';
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.roundRect(nx - 28, ny - 4, 60, 60, 4); ctx.stroke();
-        }
-
-        // 从传送带到节点的连接线
-        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 6]);
-        ctx.beginPath();
-        ctx.moveTo(nx, beltY + 8);
-        ctx.lineTo(nx, ny);
-        ctx.stroke();
+        ctx.fillStyle = 'var(--dim)'; ctx.font = '6px "Press Start 2P", monospace';
+        ctx.fillText((node.name || 'BAY').substring(0, 8), nx - 20, ny + 68);
+        // 连接线
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+        ctx.setLineDash([4, 8]);
+        ctx.beginPath(); ctx.moveTo(nx + 1, by + 8); ctx.lineTo(nx + 1, ny); ctx.stroke();
         ctx.setLineDash([]);
       }
 
-      // ── 包裹生成 + 动画 ──
-      spawnTimerRef.current++;
-      if (hasActivity && spawnTimerRef.current > 120) {
-        spawnTimerRef.current = 0;
-        spawnPkg();
-        emitSparks(60, 110, 4);
-      }
-
-      // 更新 + 绘制包裹
-      packagesRef.current = packagesRef.current.filter(p => {
+      // ── 包裹 ──
+      spawnT.current++;
+      if (hasActivity && spawnT.current > 80) { spawnT.current = 0; spawn(); emit(40, 100, 5, 'var(--gold)'); }
+      packages.current = packages.current.filter(p => {
         if (p.phase === 0) {
-          // 飞向中转站
-          p.x += (stX - 10 - p.x) * 0.06;
-          p.y += (stY + 10 - p.y) * 0.06;
-          p.bounce = Math.sin(frameRef.current * 0.15) * 4;
-          if (Math.abs(p.x - (stX - 10)) < 3) {
-            p.phase = 1;
-            emitSparks(stX - 10, stY + 10, 6);
-          }
+          p.x += (cx - 5 - p.x) * 0.07; p.y += (cy + 20 - p.y) * 0.07;
+          p.bounce = Math.sin(frame.current * 0.2) * 3;
+          if (Math.abs(p.x - (cx - 5)) < 3) { p.phase = 1; emit(cx - 5, cy + 20, 8, 'var(--cyan)'); }
         } else if (p.phase === 1) {
-          // 沿传送带到目标节点
-          if (nodePositions[p.nodeIdx]) {
-            const tx = nodePositions[p.nodeIdx].x;
-            p.x += (tx - p.x) * 0.04;
-            p.y = beltY;
-            p.bounce = Math.sin(frameRef.current * 0.2) * 2;
-            if (Math.abs(p.x - tx) < 5) {
-              p.phase = 2;
-              emitSparks(tx, beltY, 8);
-            }
-          } else {
-            p.alpha -= 0.05;
-          }
-        } else {
-          p.alpha -= 0.03;
-          p.y -= 1;
-        }
-
-        // 绘制包裹
+          if (npos[p.nodeIdx]) {
+            const tx = npos[p.nodeIdx].x + 1;
+            p.x += (tx - p.x) * 0.05; p.y = by + 2;
+            p.bounce = Math.sin(frame.current * 0.25) * 2;
+            if (Math.abs(p.x - tx) < 4) { p.phase = 2; emit(tx, by, 10, 'var(--gold)'); }
+          } else { p.alpha -= 0.05; }
+        } else { p.alpha -= 0.04; p.y -= 1; }
         if (p.alpha > 0.01) {
-          const px = p.x - 8, py = p.y - 6 + p.bounce;
-          ctx.fillStyle = '#ffc107';
-          ctx.fillRect(px, py, 14, 10);
-          ctx.strokeStyle = '#e65100';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(px, py, 14, 10);
-          // 丝带
-          ctx.strokeStyle = '#ff8f00';
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 14, py + 10); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(px + 14, py); ctx.lineTo(px, py + 10); ctx.stroke();
+          const px = p.x - 7, py = p.y - 5 + p.bounce;
+          ctx.fillStyle = '#f0c040'; ctx.fillRect(px, py, 12, 9);
+          ctx.strokeStyle = '#886010'; ctx.lineWidth = 2; ctx.strokeRect(px, py, 12, 9);
+          ctx.fillStyle = 'var(--gold)'; ctx.font = '6px sans-serif'; ctx.fillText('📦', px - 1, py + 8);
         }
-
         return p.alpha > 0.01 || p.phase < 2;
       });
 
-      // 更新 + 绘制粒子
-      particlesRef.current = particlesRef.current.filter(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.05;
-        p.life -= 0.02;
+      // ── 粒子 ──
+      particles.current = particles.current.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.04; p.life -= 0.025;
         if (p.life <= 0) return false;
-
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life / p.maxLife;
+        ctx.fillStyle = p.color; ctx.globalAlpha = p.life / p.maxLife;
         ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-        ctx.globalAlpha = 1;
-        return true;
+        ctx.globalAlpha = 1; return true;
       });
 
-      // ── 左侧投递工人 ──
-      drawSprite(ctx, hasActivity ? WORKER_WORK1 : WORKER_IDLE, 30, 100, 2);
-      ctx.fillStyle = '#8a7aaa';
-      ctx.font = '7px "Press Start 2P", monospace';
-      ctx.fillText('CLIENT', 22, 148);
+      // ── 左侧操作员 ──
+      spr(ctx, hasActivity ? SPACE_WORK : SPACE_IDLE, 18, 90, 2);
+      ctx.fillStyle = 'var(--dim)'; ctx.font = '6px "Press Start 2P", monospace';
+      ctx.fillText('OPERATOR', 8, 140);
 
-      // ── 无节点空状态 ──
+      // 空状态
       if (total === 0) {
-        ctx.fillStyle = 'rgba(250,245,239,0.7)';
-        ctx.fillRect(w * 0.5, 80, 160, 80);
-        ctx.fillStyle = '#9a8fa8';
-        ctx.font = '10px "Press Start 2P", monospace';
-        ctx.fillText('NO WORKERS', w * 0.5 + 20, 130);
+        ctx.fillStyle = 'rgba(13,17,23,0.8)'; ctx.fillRect(W / 2 - 80, 100, 160, 60);
+        ctx.strokeStyle = 'var(--border-lit)'; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - 80, 100, 160, 60);
+        ctx.fillStyle = 'var(--dim)'; ctx.font = '9px "Press Start 2P", monospace';
+        ctx.fillText('NO BAYS', W / 2 - 60, 138);
+        ctx.fillStyle = 'var(--muted)'; ctx.font = '6px "Press Start 2P", monospace';
+        ctx.fillText('REGISTER GPU', W / 2 - 58, 150);
       }
 
       animRef.current = requestAnimationFrame(render);
     };
-
     render();
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      window.removeEventListener('resize', resize);
-    };
+    return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); };
   }, [nodes, pendingTasks, queuedTasks, runningTasks]);
 
-  // Canvas click handler
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!onNodeClick || total === 0 || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const w = rect.width;
-    // 检测点击哪个节点
-    for (let i = 0; i < total; i++) {
-      const nx = w - 100 - (total - 1 - i) * 80;
-      if (x > nx - 28 && x < nx + 28 && y > 90 && y < 180) {
-        onNodeClick(nodes[i]);
-        break;
-      }
-    }
-  };
-
   return (
-    <div style={{
-      border: '2px solid var(--c-border)', borderRadius: 'var(--radius-lg)',
-      overflow: 'hidden', background: '#faf5ef',
-      cursor: total > 0 ? 'pointer' : 'default',
-    }}>
-      <canvas ref={canvasRef} onClick={handleCanvasClick} style={{ display: 'block', width: '100%' }} />
-      {/* 底部图例 */}
+    <div className="panel" style={{ overflow: 'hidden', cursor: total > 0 ? 'crosshair' : 'default' }}>
+      <canvas ref={ref} style={{ display: 'block', width: '100%' }} onClick={e => {
+        if (!onNodeClick || total === 0 || !ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        for (let i = 0; i < total; i++) {
+          const nx = rect.width - 80 - (total - 1 - i) * 72;
+          if (x > nx - 28 && x < nx + 28) { onNodeClick(nodes[i]); break; }
+        }
+      }} />
       <div style={{
-        display: 'flex', gap: 14, justifyContent: 'center',
-        padding: '8px 0', borderTop: '2px dashed var(--c-border)',
-        font: '7px var(--font-mono)', color: 'var(--c-dim)',
+        display: 'flex', gap: 12, justifyContent: 'center',
+        padding: '6px 0', borderTop: '2px solid var(--border)',
+        font: '6px var(--font-pixel)', color: 'var(--muted)',
+        background: 'var(--bg-deep)',
       }}>
-        <span>ONLINE</span><span>BUSY</span><span>OFFLINE</span>
-        {hasActivity ? <span>ACTIVE — PACKAGES IN FLIGHT</span> : <span style={{ color: 'var(--c-muted)' }}>IDLE — NO PENDING TASKS</span>}
+        <span style={{ color: 'var(--cyan)' }}>◈ ONLINE</span>
+        <span style={{ color: 'var(--gold)' }}>◆ BUSY</span>
+        <span style={{ color: 'var(--muted)' }}>◇ OFFLINE</span>
+        {hasActivity ? <span style={{ color: 'var(--gold)' }}>★ ACTIVE</span> : <span>STANDBY</span>}
       </div>
     </div>
   );

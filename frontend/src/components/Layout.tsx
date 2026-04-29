@@ -1,10 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 
-const navItems = [
-  { path: '/', label: 'STUDIO', emoji: '🏭' },
-  { path: '/tasks', label: 'TASKS', emoji: '📋' },
-  { path: '/nodes', label: 'NODES', emoji: '🖥' },
-  { path: '/submit', label: 'SUBMIT', emoji: '📦' },
+const nav = [
+  { path: '/', label: 'BRIDGE',     icon: '◆' },
+  { path: '/tasks', label: 'MISSIONS', icon: '◇' },
+  { path: '/nodes', label: 'BAYS',    icon: '◈' },
+  { path: '/submit', label: 'CARGO',   icon: '◻' },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -14,29 +14,39 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="app-layout">
       <aside className="app-sidebar">
         {/* Logo */}
-        <div style={{ padding: '18px 14px 14px', textAlign: 'center', borderBottom: '2px solid var(--c-border)' }}>
-          <div style={{ fontSize: 24, marginBottom: 4 }}>🤖</div>
-          <div style={{ font: '9px var(--font-pixel)', color: '#5a4a8a', lineHeight: 1.7 }}>AI TRAIN</div>
-          <div style={{ fontSize: 8, color: 'var(--c-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>☆ pixel scheduler ☆</div>
+        <div style={{
+          padding: '16px 12px 14px', textAlign: 'center',
+          borderBottom: '3px solid var(--border)',
+          background: 'linear-gradient(180deg, rgba(240,192,64,0.06), transparent)',
+        }}>
+          <div style={{ fontSize: 26, marginBottom: 4, filter: 'drop-shadow(0 0 4px rgba(240,192,64,0.4))' }}>
+            ⭐
+          </div>
+          <div style={{ font: '9px var(--font-pixel)', color: 'var(--gold)', letterSpacing: 2 }}>
+            STAR OFFICE
+          </div>
+          <div style={{ font: '6px var(--font-mono)', color: 'var(--muted)', marginTop: 2 }}>
+            AI SCHEDULER v3
+          </div>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {navItems.map(item => {
+        <nav style={{ flex: 1, padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {nav.map(item => {
             const active = pathname === item.path;
             return (
-              <Link key={item.path} to={item.path}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '11px 12px', borderRadius: 'var(--radius-sm)',
-                  color: active ? '#5a4a8a' : 'var(--c-dim)',
-                  background: active ? '#f5f0ff' : 'transparent',
-                  font: '8px var(--font-pixel)',
-                  border: active ? '2px solid #d4c0f0' : '2px solid transparent',
-                  transition: 'all 0.12s',
-                  letterSpacing: '0.5px',
-                }}>
-                <span style={{ fontSize: 15 }}>{item.emoji}</span>
+              <Link key={item.path} to={item.path} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px',
+                color: active ? 'var(--gold)' : 'var(--dim)',
+                background: active ? 'rgba(240,192,64,0.08)' : 'transparent',
+                borderLeft: active ? '3px solid var(--gold)' : '3px solid transparent',
+                font: '7px var(--font-pixel)', textDecoration: 'none',
+                letterSpacing: 1,
+                transition: 'none',
+                boxShadow: active ? 'inset 0 0 20px rgba(240,192,64,0.05)' : 'none',
+              }}>
+                <span style={{ fontSize: 12, color: active ? 'var(--gold)' : 'var(--muted)' }}>{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -45,17 +55,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Footer */}
         <div style={{
-          margin: '8px', padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-          background: '#f5f0ff', border: '2px solid #e8ddf8',
-          font: '7px var(--font-pixel)', color: 'var(--c-dim)',
-          textAlign: 'center', lineHeight: 2,
+          margin: '6px', padding: '8px 10px', border: '2px solid var(--border)',
+          background: 'var(--bg-deep)', textAlign: 'center',
+          font: '6px var(--font-pixel)', color: 'var(--muted)', lineHeight: 2,
         }}>
-          <div>v3.0 STUDIO</div>
-          <div style={{ color: 'var(--c-muted)', fontSize: 6 }}>© 2026 AI SCHEDULER</div>
+          <div>SYS <span style={{ color: 'var(--green)' }}>●</span> NOMINAL</div>
+          <div style={{ fontSize: 5, color: 'var(--border-lit)', marginTop: 2 }}>© 2026 DEEP SCHEDULER</div>
         </div>
       </aside>
 
-      <main className="app-main">
+      <main className="app-main" style={{ position: 'relative', zIndex: 2 }}>
         {children}
       </main>
     </div>
