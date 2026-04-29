@@ -18,6 +18,7 @@ import argparse
 import json
 import math
 import os
+import signal
 import sys
 import time
 
@@ -247,6 +248,70 @@ def get_gpu_info():
         return "N/A"
 
 
+# CIFAR-10 下载镜像列表（按优先级排列）
+CIFAR10_MIRRORS = [
+    "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
+    "https://dataset.bj.bcebos.com/cifar/cifar-10-python.tar.gz",
+    "https://opendatalab.com/CIFAR-10/raw/main/cifar-10-python.tar.gz",
+]
+CIFAR10_MD5 = "c58f30108f718f92721af3b95e74349a"
+
+
+def _download_cifar10(data_dir: str):
+    """下载 CIFAR-10 数据集, 多镜像 fallback + signal 超时"""
+    import hashlib
+    import tarfile
+    import urllib.request
+
+    tar_path = os.path.join(data_dir, "cifar-10-python.tar.gz")
+
+    def _handler(signum, frame):
+        raise TimeoutError("CIFAR-10 download timed out")
+
+    # 设置 3 分钟硬超时 (仅 Linux)
+    if hasattr(signal, "SIGALRM"):
+        signal.signal(signal.SIGALRM, _handler)
+        signal.alarm(180)
+
+    last_err = None
+    try:
+        for url in CIFAR10_MIRRORS:
+            try:
+                print(f"  Trying: {url}")
+                sys.stdout.flush()
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    with open(tar_path, "wb") as f:
+                        while True:
+                            chunk = resp.read(8192)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                # 验证文件完整性
+                with open(tar_path, "rb") as f:
+                    md5 = hashlib.md5(f.read()).hexdigest()
+                if md5 != CIFAR10_MD5:
+                    print(f"  MD5 mismatch: {md5}, retrying...")
+                    os.remove(tar_path)
+                    continue
+                # 解压
+                with tarfile.open(tar_path, "r:gz") as tf:
+                    tf.extractall(data_dir)
+                os.remove(tar_path)
+                print(f"  OK from {url}")
+                return
+            except Exception as e:
+                last_err = e
+                print(f"  Failed: {e}")
+                sys.stdout.flush()
+                if os.path.exists(tar_path):
+                    os.remove(tar_path)
+        raise RuntimeError(f"All mirrors failed. Last error: {last_err}")
+    finally:
+        if hasattr(signal, "SIGALRM"):
+            signal.alarm(0)
+
+
 def train(args):
     device = torch.device(args.device if args.device else ("cuda" if torch.cuda.is_available() else "cpu"))
     print(f"DEVICE: {device}")
@@ -255,20 +320,38 @@ def train(args):
     print(f"ARGS: {json.dumps(vars(args), indent=2, default=str)}")
     sys.stdout.flush()
 
-    # 数据集 — CIFAR-10 自动下载 (~170MB)
+    # 数据集 — CIFAR-10 (~170MB), 多镜像 + signal 超时
     data_dir = args.data_dir or "/tmp/cifar10-data"
     os.makedirs(data_dir, exist_ok=True)
     print(f"DATA_DIR: {data_dir}")
     sys.stdout.flush()
 
-    try:
-        train_dataset = datasets.CIFAR10(
-            root=data_dir, train=True, download=True, transform=build_transforms(True)
-        )
-    except Exception as e:
-        print(f"ERROR: CIFAR-10 下载失败: {e}")
-        print("请检查 GPU Worker 是否有外网访问权限，或手动将 CIFAR-10 放入 data_dir")
-        sys.exit(1)
+    # 检查是否已下载 (torchvision 标准目录结构)
+    cifar_ready = os.path.exists(os.path.join(data_dir, "cifar-10-batches-py"))
+
+    if cifar_ready:
+        print("CIFAR-10 already downloaded, skipping.")
+    else:
+        print("Downloading CIFAR-10 (~170MB)...")
+        print("Mirrors: Toronto Univ, OpenDataLab, Baidu")
+        sys.stdout.flush()
+        try:
+            _download_cifar10(data_dir)
+        except Exception as e:
+            print(f"FATAL: All mirrors failed: {e}")
+            print("")
+            print("Manual fix — SSH into GPU server and run:")
+            print(f"  mkdir -p {data_dir}")
+            print(f"  wget -P {data_dir} https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz")
+            print(f"  tar xzf {data_dir}/cifar-10-python.tar.gz -C {data_dir}")
+            print("Then re-submit the task.")
+            sys.exit(1)
+        print("CIFAR-10 ready.")
+
+    sys.stdout.flush()
+    train_dataset = datasets.CIFAR10(
+        root=data_dir, train=True, download=False, transform=build_transforms(True)
+    )
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
