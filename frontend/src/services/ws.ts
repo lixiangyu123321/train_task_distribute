@@ -1,24 +1,44 @@
+import { Client, IMessage } from '@stomp/stompjs';
 import type { WsMessage } from '../types';
 
 type Callback = (msg: WsMessage) => void;
 const listeners: Map<string, Callback[]> = new Map();
-let stompClient: WebSocket | null = null;
+let stompClient: Client | null = null;
 
-export function connectWebSocket(schedulerHost: string) {
-  const wsUrl = `ws://${schedulerHost}:8081/ws/dashboard`;
-  stompClient = new WebSocket(wsUrl);
-  stompClient.onmessage = (event) => {
-    try {
-      const msg: WsMessage = JSON.parse(event.data);
-      const cbs = listeners.get(msg.type) || [];
-      cbs.forEach((cb) => cb(msg));
-    } catch {
-      // skip non-JSON frames
+function dispatch(msg: WsMessage) {
+  const cbs = listeners.get(msg.type) || [];
+  cbs.forEach((cb) => cb(msg));
+}
+
+function handleMessage(message: IMessage) {
+  try {
+    const data = JSON.parse(message.body);
+    if (data.type) {
+      dispatch(data as WsMessage);
+    } else {
+      dispatch({ type: 'DASHBOARD_SNAPSHOT', payload: data } as WsMessage);
     }
-  };
-  stompClient.onclose = () => {
-    setTimeout(() => connectWebSocket(schedulerHost), 5000);
-  };
+  } catch { /* skip non-JSON */ }
+}
+
+export function connectWebSocket() {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const brokerURL = `${proto}//${window.location.host}/ws/dashboard`;
+
+  stompClient = new Client({
+    brokerURL,
+    reconnectDelay: 5000,
+    onConnect: () => {
+      stompClient?.subscribe('/topic/dashboard', handleMessage);
+      stompClient?.subscribe('/topic/task-status', handleMessage);
+      stompClient?.subscribe('/topic/node-resource', handleMessage);
+    },
+    onStompError: (frame) => {
+      console.warn('STOMP error:', frame.headers['message']);
+    },
+  });
+
+  stompClient.activate();
 }
 
 export function subscribe(type: string, callback: Callback) {
@@ -32,5 +52,5 @@ export function subscribe(type: string, callback: Callback) {
 }
 
 export function disconnectWebSocket() {
-  stompClient?.close();
+  stompClient?.deactivate();
 }

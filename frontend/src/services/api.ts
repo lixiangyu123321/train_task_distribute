@@ -23,6 +23,21 @@ export async function fetchNodes(): Promise<NodeItem[]> {
   return data.data;
 }
 
+export async function offlineNode(nodeId: string) {
+  const { data } = await api.post(`/nodes/${nodeId}/offline`);
+  return data;
+}
+
+export async function deleteNode(nodeId: string) {
+  const { data } = await api.delete(`/nodes/${nodeId}`);
+  return data;
+}
+
+export async function purgeAllTasks() {
+  const { data } = await api.delete('/tasks');
+  return data;
+}
+
 export async function submitTask(payload: Record<string, unknown>) {
   const { data } = await api.post('/tasks', payload);
   return data;

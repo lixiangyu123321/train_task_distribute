@@ -5,6 +5,7 @@ import com.aisched.scheduler.model.entity.Task;
 import com.aisched.scheduler.model.entity.TaskPackage;
 import com.aisched.scheduler.model.enums.TaskStatus;
 import com.aisched.scheduler.queue.RedisTaskQueue;
+import com.aisched.scheduler.repository.TaskLogRepository;
 import com.aisched.scheduler.repository.TaskPackageRepository;
 import com.aisched.scheduler.repository.TaskRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,13 +25,15 @@ public class TaskService {
     private static final Logger log = LoggerFactory.getLogger(TaskService.class);
 
     private final TaskRepository taskRepository;
+    private final TaskLogRepository logRepository;
     private final RedisTaskQueue taskQueue;
     private final TaskPackageRepository pkgRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public TaskService(TaskRepository taskRepository, RedisTaskQueue taskQueue,
-                       TaskPackageRepository pkgRepository) {
+    public TaskService(TaskRepository taskRepository, TaskLogRepository logRepository,
+                       RedisTaskQueue taskQueue, TaskPackageRepository pkgRepository) {
         this.taskRepository = taskRepository;
+        this.logRepository = logRepository;
         this.taskQueue = taskQueue;
         this.pkgRepository = pkgRepository;
     }
@@ -87,6 +90,17 @@ public class TaskService {
         taskQueue.remove(taskId);
         taskRepository.save(task);
         log.info("Task cancelled: {}", taskId);
+    }
+
+    @Transactional
+    public long purgeAllTasks() {
+        long count = taskRepository.count();
+        taskQueue.clear();
+        logRepository.deleteAll();
+        pkgRepository.deleteAll();
+        taskRepository.deleteAll();
+        log.info("Purged all tasks: {} records", count);
+        return count;
     }
 
     @Transactional

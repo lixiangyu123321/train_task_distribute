@@ -44,6 +44,11 @@ public class RedisTaskQueue {
         redisTemplate.opsForList().remove(PENDING_QUEUE, 0, taskId);
     }
 
+    /** 清空队列 */
+    public void clear() {
+        redisTemplate.delete(PENDING_QUEUE);
+    }
+
     /** 获取调度分布式锁 */
     public boolean tryAcquireDispatchLock(int timeoutSec) {
         Boolean ok = redisTemplate.opsForValue().setIfAbsent(

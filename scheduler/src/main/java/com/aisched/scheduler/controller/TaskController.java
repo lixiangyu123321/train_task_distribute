@@ -73,6 +73,12 @@ public class TaskController {
         return ResponseEntity.ok(buildResponse(200, "任务已取消", null));
     }
 
+    @DeleteMapping
+    public ResponseEntity<Map<String, Object>> purgeAllTasks() {
+        long count = taskService.purgeAllTasks();
+        return ResponseEntity.ok(buildResponse(200, "已删除全部任务", Map.of("deleted", count)));
+    }
+
     /** Worker 回调：更新任务状态 */
     @PostMapping("/{taskId}/status")
     public ResponseEntity<Map<String, Object>> updateStatus(

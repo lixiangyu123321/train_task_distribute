@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
-import { fetchNodes } from '../services/api';
+import { fetchNodes, deleteNode, offlineNode } from '../services/api';
 import StatusBadge from './StatusBadge';
 import PixelWorker from './PixelWorker';
 import type { NodeItem } from '../types';
@@ -49,6 +49,24 @@ export default function NodeManager() {
     } catch {}
   };
 
+  const handleOffline = async (nodeId: string, nodeName: string) => {
+    if (!confirm(`Set node "${nodeName}" OFFLINE?`)) return;
+    try {
+      await offlineNode(nodeId);
+      setMsg(`Node "${nodeName}" set offline`);
+      refresh();
+    } catch (e) { setMsg('Offline failed: ' + (e as Error).message); }
+  };
+
+  const handleDelete = async (nodeId: string, nodeName: string) => {
+    if (!confirm(`DELETE node "${nodeName}" permanently?`)) return;
+    try {
+      await deleteNode(nodeId);
+      setMsg(`Node "${nodeName}" deleted`);
+      refresh();
+    } catch (e) { setMsg('Delete failed: ' + (e as Error).message); }
+  };
+
   const getWorkerState = (n: NodeItem) => {
     if (n.status === 'OFFLINE') return 'sleeping' as const;
     if (n.status === 'ERROR') return 'error' as const;
@@ -58,7 +76,7 @@ export default function NodeManager() {
 
   const F = ({ label, value, onChange, placeholder = '', type = 'text' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) => (
     <div style={{ marginBottom: 10 }}>
-      <label style={{ display: 'block', fontSize: 7, color: '#8a7aaa', fontFamily: "'Press Start 2P', monospace", marginBottom: 3 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 7, color: 'var(--dim)', fontFamily: "'Press Start 2P', monospace", marginBottom: 3 }}>{label}</label>
       <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         style={{ width: '100%', padding: '8px 10px', fontSize: 11 }} />
     </div>
@@ -68,10 +86,10 @@ export default function NodeManager() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h2 style={{ marginBottom: 4 }}>🖥️ NODE MANAGE</h2>
-          <div className="pixel-divider" />
+          <h2 style={{ marginBottom: 4 }}>◈ NODE MANAGE</h2>
+          <div className="divider" />
         </div>
-        <button className="pixel-btn" onClick={() => setShowForm(!showForm)} style={{ fontSize: 8 }}>
+        <button className="btn cyan" onClick={() => setShowForm(!showForm)} style={{ fontSize: 8 }}>
           {showForm ? '✕ CANCEL' : '+ ADD NODE'}
         </button>
       </div>
@@ -79,17 +97,16 @@ export default function NodeManager() {
       {msg && (
         <div style={{
           marginBottom: 14, padding: '8px 14px', borderRadius: 4,
-          background: msg.includes('Error') || msg.includes('Failed') ? '#ffebee' : '#e8f5e9',
-          border: `2px solid ${msg.includes('Error') || msg.includes('Failed') ? '#ff8a80' : '#8cd790'}`,
-          fontFamily: "'Press Start 2P', monospace", fontSize: 7, color: '#333',
+          background: msg.includes('Error') || msg.includes('Failed') ? 'rgba(240,64,80,0.1)' : 'rgba(80,224,96,0.1)',
+          border: `2px solid ${msg.includes('Error') || msg.includes('Failed') ? 'var(--red)' : 'var(--green)'}`,
+          fontFamily: "'Press Start 2P', monospace", fontSize: 7, color: 'var(--white)',
         }}>
           {msg}
         </div>
       )}
 
-      {/* 新增表单 */}
       {showForm && (
-        <div className="pixel-card" style={{ padding: 16, marginBottom: 16 }}>
+        <div className="panel" style={{ padding: 16, marginBottom: 16 }}>
           <h4 style={{ marginBottom: 12 }}>▸ REGISTER NEW NODE</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
             <F label="NODE NAME *" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} placeholder="gpu-worker-01" />
@@ -99,20 +116,19 @@ export default function NodeManager() {
             <F label="GPU COUNT" value={form.gpuCount} onChange={v => setForm(p => ({ ...p, gpuCount: v }))} type="number" />
             <F label="VRAM (MB)" value={form.vramTotalMb} onChange={v => setForm(p => ({ ...p, vramTotalMb: v }))} type="number" />
           </div>
-          <button className="pixel-btn green" onClick={handleRegister} style={{ width: '100%', marginTop: 10, fontSize: 8 }}>
+          <button className="btn green" onClick={handleRegister} style={{ width: '100%', marginTop: 10, fontSize: 8 }}>
             REGISTER NODE
           </button>
         </div>
       )}
 
-      {/* 节点列表 */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#b0a0c0', fontFamily: "'Press Start 2P', monospace", fontSize: 8 }}>LOADING...</div>
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--dim)', fontFamily: "'Press Start 2P', monospace", fontSize: 8 }}>LOADING...</div>
       ) : (
-        <div className="pixel-card" style={{ overflow: 'hidden' }}>
+        <div className="panel" style={{ overflow: 'hidden' }}>
           <table style={{ width: '100%' }}>
             <thead>
-              <tr style={{ background: '#fdfaf5', fontFamily: "'Press Start 2P', monospace", fontSize: 7, textAlign: 'left', color: '#8a7aaa', borderBottom: '2px solid #e0d6c8' }}>
+              <tr style={{ background: 'var(--bg-card)', fontFamily: "'Press Start 2P', monospace", fontSize: 7, textAlign: 'left', color: 'var(--cyan)', borderBottom: '2px solid var(--border)' }}>
                 <th style={{ padding: '10px 12px' }}>WORKER</th>
                 <th>STATUS</th>
                 <th>GPU</th>
@@ -125,31 +141,32 @@ export default function NodeManager() {
               {(nodes || []).map((node: NodeItem) => {
                 const isWorking = (node.resources?.activeTasks || 0) > 0;
                 return (
-                  <tr key={node.nodeId} style={{ borderBottom: '1px solid #f0e8d8' }}>
+                  <tr key={node.nodeId} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <PixelWorker state={getWorkerState(node)} size="small" />
-                        <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 7, color: '#5a4a8a' }}>{(node.name || '').substring(0, 12)}</span>
+                        <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 7, color: 'var(--cyan)' }}>{(node.name || '').substring(0, 12)}</span>
                       </div>
                     </td>
                     <td><StatusBadge status={node.status} /></td>
-                    <td style={{ fontSize: 10, fontFamily: 'monospace', color: '#8a7aaa' }}>{node.gpuModel || '-'}</td>
+                    <td style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--dim)' }}>{node.gpuModel || '-'}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 50, height: 8, background: '#f0e8d8', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ width: `${node.resources?.gpuUtilization || 0}%`, height: '100%', background: isWorking ? '#ffa726' : '#8cd790', borderRadius: 2, transition: 'width 0.3s' }} />
+                        <div style={{ width: 50, height: 8, background: 'var(--bg-deep)', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ width: `${node.resources?.gpuUtilization || 0}%`, height: '100%', background: isWorking ? 'var(--gold)' : 'var(--green)', borderRadius: 2, transition: 'width 0.3s' }} />
                         </div>
-                        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#8a7aaa' }}>{node.resources?.gpuUtilization || 0}%</span>
+                        <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--dim)' }}>{node.resources?.gpuUtilization || 0}%</span>
                       </div>
                     </td>
-                    <td style={{ fontSize: 10, fontFamily: 'monospace', color: '#b0a0c0' }}>{node.publicIp}:{node.apiPort}</td>
+                    <td style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--muted)' }}>{node.publicIp}:{node.apiPort}</td>
                     <td style={{ padding: '10px 8px' }}>
-                      <button
-                        onClick={() => handleHeartbeat(node.nodeId)}
-                        className="pixel-btn"
-                        style={{ fontSize: 6, padding: '4px 10px', background: '#7ec8e3', boxShadow: '2px 2px 0 #5a9ab8' }}>
-                        PING
-                      </button>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button onClick={() => handleHeartbeat(node.nodeId)} className="btn cyan sm">PING</button>
+                        {node.status === 'ONLINE' && (
+                          <button onClick={() => handleOffline(node.nodeId, node.name)} className="btn gold sm">OFF</button>
+                        )}
+                        <button onClick={() => handleDelete(node.nodeId, node.name)} className="btn red sm">DEL</button>
+                      </div>
                     </td>
                   </tr>
                 );

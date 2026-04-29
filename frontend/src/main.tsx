@@ -5,7 +5,7 @@ import App from './App';
 import { connectWebSocket } from './services/ws';
 import './styles/global.css';
 
-connectWebSocket(window.location.hostname);
+connectWebSocket();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

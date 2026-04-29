@@ -1,14 +1,18 @@
 """Worker — 注册到调度器（自动检测本机硬件）"""
 import httpx
 import logging
+import time
 import config
 from monitor.gpu_monitor import detect_gpu_model, detect_gpu_count, detect_vram_total_mb
 
 logger = logging.getLogger(__name__)
 
+MAX_RETRIES = 5
+RETRY_DELAY = 3
+
 
 def register_node() -> str:
-    """向调度器注册当前 Worker 节点，自动检测硬件配置"""
+    """向调度器注册当前 Worker 节点，自动检测硬件配置，带重试"""
     gpu_model = detect_gpu_model()
     gpu_count = detect_gpu_count()
     vram_total = detect_vram_total_mb()
@@ -23,19 +27,25 @@ def register_node() -> str:
         "gpuCount": gpu_count,
         "vramTotalMb": vram_total
     }
-    try:
-        resp = httpx.post(config.SCHEDULER_REGISTER_URL, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-        node_id = data.get("data", {}).get("nodeId", "")
-        logger.info(f"Worker registered as nodeId={node_id}")
 
-        from main import heartbeat_reporter
-        heartbeat_reporter.set_node_id(node_id)
-        return node_id
-    except Exception as e:
-        logger.error(f"Failed to register worker: {e}")
-        raise
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = httpx.post(config.SCHEDULER_REGISTER_URL, json=payload, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            node_id = data.get("data", {}).get("nodeId", "")
+            logger.info(f"Worker registered as nodeId={node_id}")
+
+            from main import heartbeat_reporter
+            heartbeat_reporter.set_node_id(node_id)
+            return node_id
+        except Exception as e:
+            logger.warning(f"Registration attempt {attempt}/{MAX_RETRIES} failed: {e}")
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY)
+            else:
+                logger.error("All registration attempts exhausted")
+                raise
 
 
 def _get_public_ip() -> str:
@@ -52,7 +62,6 @@ def _get_public_ip() -> str:
         s.close()
         return ip
     except Exception:
-        # 尝试获取公网出口 IP
         try:
             resp = httpx.get("https://api.ipify.org", timeout=5)
             return resp.text.strip()

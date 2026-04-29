@@ -27,7 +27,7 @@ export default function SubmitTask() {
       <div className="divider" />
       <div style={{ display: 'flex', gap: 0, margin: '14px 0' }}>
         <button className={`btn ${mode === 'zip' ? 'cyan' : ''}`} onClick={() => setMode('zip')} style={{ font: '7px var(--font-pixel)' }}>ZIP UPLOAD</button>
-        <button className={`btn ${mode === 'json' ? '' : ''}`} onClick={() => setMode('json')} style={mode !== 'json' ? { font: '7px var(--font-pixel)', background: 'var(--bg-panel)', border: '2px solid var(--border)', color: 'var(--dim)', boxShadow: 'none' } : { font: '7px var(--font-pixel)' }}>JSON FORM</button>
+        <button className={`btn ${mode === 'json' ? 'cyan' : ''}`} onClick={() => setMode('json')} style={mode !== 'json' ? { font: '7px var(--font-pixel)', background: 'var(--bg-panel)', border: '2px solid var(--border)', color: 'var(--dim)', boxShadow: 'none' } : { font: '7px var(--font-pixel)' }}>JSON FORM</button>
       </div>
       <div className="panel" style={{ padding: 16 }}>
         {mode === 'zip' ? (<>

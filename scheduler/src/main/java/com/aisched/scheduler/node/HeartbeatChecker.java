@@ -19,13 +19,16 @@ public class HeartbeatChecker {
     private static final Logger log = LoggerFactory.getLogger(HeartbeatChecker.class);
 
     private final GpuNodeRepository nodeRepository;
+    private final NodeRegistry nodeRegistry;
     private final RedisTemplate<String, String> redisTemplate;
     private final AppConfig appConfig;
 
     public HeartbeatChecker(GpuNodeRepository nodeRepository,
+                            NodeRegistry nodeRegistry,
                             RedisTemplate<String, String> redisTemplate,
                             AppConfig appConfig) {
         this.nodeRepository = nodeRepository;
+        this.nodeRegistry = nodeRegistry;
         this.redisTemplate = redisTemplate;
         this.appConfig = appConfig;
     }
@@ -58,6 +61,7 @@ public class HeartbeatChecker {
     private void markOffline(GpuNode node) {
         node.setStatus(NodeStatus.OFFLINE);
         nodeRepository.save(node);
+        nodeRegistry.unregister(node.getId());
         redisTemplate.delete("node:" + node.getId() + ":heartbeat");
         redisTemplate.delete("node:" + node.getId() + ":resources");
         log.info("Node {} marked OFFLINE", node.getName());

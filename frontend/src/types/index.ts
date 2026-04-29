@@ -14,6 +14,8 @@ export interface TaskItem {
   startedAt: string | null;
   finishedAt: string | null;
   errorMsg: string | null;
+  packageId: string | null;
+  metrics: Record<string, unknown> | null;
 }
 
 export interface NodeItem {
@@ -42,6 +44,6 @@ export interface DashboardSnapshot {
 }
 
 export interface WsMessage {
-  type: 'TASK_STATUS_CHANGE' | 'NODE_RESOURCE_UPDATE';
+  type: 'TASK_STATUS_CHANGE' | 'NODE_RESOURCE_UPDATE' | 'DASHBOARD_SNAPSHOT';
   payload: Record<string, unknown>;
 }

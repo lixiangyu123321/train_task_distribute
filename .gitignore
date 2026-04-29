@@ -40,3 +40,5 @@ Thumbs.db
 *.log
 logs/
 files/
+examples/mae-cifar10/data/
+examples/mae-cifar10.zip

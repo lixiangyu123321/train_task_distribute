@@ -6,6 +6,7 @@ import com.aisched.scheduler.model.entity.TaskPackage;
 import com.aisched.scheduler.repository.TaskPackageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.yaml.snakeyaml.Yaml;
@@ -22,6 +23,9 @@ public class TransferService {
     private static final Set<String> TRAIN_FILES = Set.of("train.py", "train.sh");
     private static final Set<String> FINETUNE_FILES = Set.of("finetune.py", "finetune.sh", "lora.py");
     private static final Set<String> EVAL_FILES = Set.of("eval.py", "evaluate.py", "eval.sh");
+
+    @Value("${server.port:8080}")
+    private int serverPort;
 
     private final AppConfig appConfig;
     private final TaskPackageRepository pkgRepo;
@@ -108,7 +112,7 @@ public class TransferService {
 
     /** 获取下载 URL（Scheduler 对外地址） */
     public String getDownloadUrl(String packageId) {
-        return "http://" + appConfig.getPublicIp() + ":8080/api/v1/transfer/download/" + packageId;
+        return "http://" + appConfig.getPublicIp() + ":" + serverPort + "/api/v1/transfer/download/" + packageId;
     }
 
     private List<String> listZipEntries(byte[] data) throws IOException {

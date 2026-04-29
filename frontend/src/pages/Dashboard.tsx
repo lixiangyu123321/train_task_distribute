@@ -53,6 +53,8 @@ export default function Dashboard() {
         nodes={(nodes || []) as NodeItem[]}
         pendingTasks={p} queuedTasks={q} runningTasks={r}
         onNodeClick={() => nav('/nodes')}
+        onAddNode={() => nav('/nodes?tab=manage')}
+        onRemoveNode={() => nav('/nodes')}
       />
 
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

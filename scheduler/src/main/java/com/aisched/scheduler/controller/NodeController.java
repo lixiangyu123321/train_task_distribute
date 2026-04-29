@@ -57,6 +57,18 @@ public class NodeController {
         return ResponseEntity.ok(buildResponse(200, "success", node));
     }
 
+    @PostMapping("/{nodeId}/offline")
+    public ResponseEntity<Map<String, Object>> offlineNode(@PathVariable String nodeId) {
+        nodeService.setOffline(nodeId);
+        return ResponseEntity.ok(buildResponse(200, "节点已下线", null));
+    }
+
+    @DeleteMapping("/{nodeId}")
+    public ResponseEntity<Map<String, Object>> deleteNode(@PathVariable String nodeId) {
+        nodeService.deleteNode(nodeId);
+        return ResponseEntity.ok(buildResponse(200, "节点已删除", null));
+    }
+
     private Map<String, Object> buildResponse(int code, String message, Object data) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", code);

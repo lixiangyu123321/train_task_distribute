@@ -105,6 +105,29 @@ public class NodeService {
         nodeRepository.save(node);
     }
 
+    @Transactional
+    public void setOffline(String nodeId) {
+        GpuNode node = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new IllegalArgumentException("节点不存在: " + nodeId));
+        node.setStatus(NodeStatus.OFFLINE);
+        nodeRepository.save(node);
+        nodeRegistry.unregister(nodeId);
+        redisTemplate.delete("node:" + nodeId + ":heartbeat");
+        redisTemplate.delete("node:" + nodeId + ":resources");
+        log.info("Node set offline: {} ({})", node.getName(), nodeId);
+    }
+
+    @Transactional
+    public void deleteNode(String nodeId) {
+        GpuNode node = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new IllegalArgumentException("节点不存在: " + nodeId));
+        nodeRepository.delete(node);
+        nodeRegistry.unregister(nodeId);
+        redisTemplate.delete("node:" + nodeId + ":heartbeat");
+        redisTemplate.delete("node:" + nodeId + ":resources");
+        log.info("Node deleted: {} ({})", node.getName(), nodeId);
+    }
+
     public List<NodeStatusDTO> listAllNodes() {
         return nodeRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
     }
