@@ -147,8 +147,88 @@ python ../../client/cli.py submit --file ./task-package.zip`}</Block>
         </p>
       </div>
 
+      {/* 模板系统 */}
+      <div className="panel" style={{ padding: 14, marginTop: 10 }}>
+        <h3 style={{ font: '8px var(--font-pixel)', color: 'var(--cyan)', margin: '0 0 8px' }}>
+          ◎ TASK TEMPLATES
+        </h3>
+        <p style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', lineHeight: 2.2, margin: '0 0 10px' }}>
+          模板是预配置好的训练参数组合，可复用并快速提交任务。
+          前往 <Link to="/templates" style={{ color: 'var(--cyan)' }}>TEMPLATES ◎</Link> 页面管理模板。
+        </p>
+        <p style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', lineHeight: 2.2, margin: 0 }}>
+          <b style={{ color: 'var(--gold)' }}>使用方式:</b><br/>
+          · 在 <Link to="/submit" style={{ color: 'var(--cyan)' }}>SUBMIT ◻</Link> 的 JSON FORM
+          模式下，顶部下拉选择模板，参数自动填入<br/>
+          · 创建定时调度时也需要选择模板作为任务来源<br/>
+          · 系统预置 4 个模板：MAE 预训练、LoRA 微调、图像分类、全量微调
+        </p>
+      </div>
+
+      {/* 定时调度 */}
+      <div className="panel" style={{ padding: 14, marginTop: 10 }}>
+        <h3 style={{ font: '8px var(--font-pixel)', color: 'var(--purple)', margin: '0 0 8px' }}>
+          ◷ SCHEDULED TASKS (CRON)
+        </h3>
+        <p style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', lineHeight: 2.2, margin: '0 0 10px' }}>
+          定时调度可按 Cron 表达式自动从模板创建任务。
+          前往 <Link to="/schedules" style={{ color: 'var(--cyan)' }}>SCHEDULES ◷</Link> 页面管理。
+        </p>
+        <p style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', lineHeight: 2.2, margin: '0 0 10px' }}>
+          <b style={{ color: 'var(--gold)' }}>创建步骤:</b><br/>
+          1. 点击 <C>+ ADD SCHEDULE</C><br/>
+          2. 选择一个任务模板（模板决定训练类型和参数）<br/>
+          3. 可选填任务名称（留空则使用模板名称）<br/>
+          4. 设置 Cron 表达式（可从预设中选择）<br/>
+          5. 点击 <C>CREATE SCHEDULE</C>
+        </p>
+        <p style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', margin: '0 0 10px' }}>
+          <b style={{ color: 'var(--cyan)' }}>Cron 表达式格式:</b>&nbsp;
+          <C>分 时 日 月 周</C>
+        </p>
+        <Block>{`# 常用示例
+0 * * * *      每小时整点
+0 */6 * * *    每 6 小时
+0 3 * * *      每天凌晨 3:00
+0 9 * * *      每天上午 9:00
+0 8 * * 1-5    工作日上午 8:00
+0 0 * * 1      每周一午夜
+0 0 1 * *      每月 1 号午夜
+
+# 字段说明
+┌───── 分钟 (0-59)
+│ ┌───── 小时 (0-23)
+│ │ ┌───── 日 (1-31)
+│ │ │ ┌───── 月 (1-12)
+│ │ │ │ ┌───── 周几 (0-7, 0和7都是周日)
+│ │ │ │ │
+* * * * *`}</Block>
+        <p style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', lineHeight: 2.2, margin: '10px 0 0' }}>
+          <b style={{ color: 'var(--gold)' }}>管理操作:</b><br/>
+          · <b style={{ color: 'var(--green)' }}>ON</b>/<b style={{ color: 'var(--red)' }}>OFF</b>
+          按钮可暂停/恢复调度（不删除）<br/>
+          · 系统每分钟检查一次到期任务并自动提交<br/>
+          · LAST RUN / NEXT RUN 列显示上次和下次执行时间
+        </p>
+      </div>
+
+      {/* 批量操作 */}
+      <div className="panel" style={{ padding: 14, marginTop: 10 }}>
+        <h3 style={{ font: '8px var(--font-pixel)', color: 'var(--green)', margin: '0 0 8px' }}>
+          ◇ BATCH OPERATIONS
+        </h3>
+        <p style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', lineHeight: 2.2, margin: 0 }}>
+          · 在 <Link to="/tasks" style={{ color: 'var(--cyan)' }}>TASKS ◇</Link> 页面勾选多个任务，底部出现批量操作栏<br/>
+          · <b style={{ color: 'var(--red)' }}>CANCEL SELECTED</b> — 批量取消进行中的任务<br/>
+          · <b style={{ color: 'var(--cyan)' }}>RETRY SELECTED</b> — 批量重试失败的任务（克隆为新任务）<br/>
+          · 任务详情页可 <b style={{ color: 'var(--cyan)' }}>CLONE</b> 单个任务<br/>
+          · <Link to="/compare" style={{ color: 'var(--cyan)' }}>COMPARE</Link> 页面可叠加对比多个已完成任务的 Loss 曲线
+        </p>
+      </div>
+
       <div style={{ marginTop: 14, display: 'flex', gap: 10, justifyContent: 'center' }}>
         <Link to="/submit" className="btn gold">GO TO SUBMIT ◻</Link>
+        <Link to="/schedules" className="btn cyan">GO TO SCHEDULES ◷</Link>
         <Link to="/" className="btn cyan">BACK TO DASHBOARD ◆</Link>
       </div>
     </div>

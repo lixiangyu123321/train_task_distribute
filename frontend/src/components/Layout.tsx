@@ -74,13 +74,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     {user.role}
                   </span>
                 </div>
-                <button className="btn red" style={{ fontSize: 5, padding: '3px 8px', width: '100%' }}
+                <button className="btn red" style={{ fontSize: 5, padding: '2px 10px' }}
                   onClick={() => {
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
                     window.location.href = '/login';
                   }}>
-                  LOGOUT
+                  EXIT
                 </button>
               </>
             ) : (
