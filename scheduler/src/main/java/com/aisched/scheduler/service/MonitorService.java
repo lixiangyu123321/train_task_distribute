@@ -29,12 +29,7 @@ public class MonitorService {
     public DashboardSnapshot getDashboardSnapshot() {
         DashboardSnapshot snapshot = new DashboardSnapshot();
 
-        Map<String, Long> totalTasks = new HashMap<>();
-        totalTasks.put("pending", taskRepository.countByStatus(TaskStatus.PENDING));
-        totalTasks.put("queued", taskRepository.countByStatus(TaskStatus.QUEUED));
-        totalTasks.put("running", taskRepository.countByStatus(TaskStatus.RUNNING));
-        totalTasks.put("completed", taskRepository.countByStatus(TaskStatus.COMPLETED));
-        totalTasks.put("failed", taskRepository.countByStatus(TaskStatus.FAILED));
+        Map<String, Long> totalTasks = singlePassCounts();
         snapshot.setTotalTasks(totalTasks);
 
         List<NodeStatusDTO> nodes = nodeService.listAllNodes();
@@ -52,4 +47,20 @@ public class MonitorService {
 
         return snapshot;
     }
+
+    /** Single GROUP BY query instead of 6 individual count queries */
+    private Map<String, Long> singlePassCounts() {
+        Map<String, Long> counts = new HashMap<>();
+        List<Object[]> rows = taskRepository.countByStatusGrouped();
+        for (Object[] row : rows) {
+            TaskStatus status = (TaskStatus) row[0];
+            Long count = (Long) row[1];
+            counts.put(status.name().toLowerCase(), count);
+        }
+        for (TaskStatus s : TaskStatus.values()) {
+            counts.putIfAbsent(s.name().toLowerCase(), 0L);
+        }
+        return counts;
+    }
+
 }

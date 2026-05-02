@@ -1,21 +1,31 @@
 package com.aisched.scheduler.service;
 
 import com.aisched.scheduler.model.dto.TaskStatusResponse;
+import com.aisched.scheduler.model.entity.GpuNode;
 import com.aisched.scheduler.model.entity.Task;
 import com.aisched.scheduler.model.entity.TaskPackage;
 import com.aisched.scheduler.model.enums.TaskStatus;
 import com.aisched.scheduler.queue.RedisTaskQueue;
+import com.aisched.scheduler.repository.GpuNodeRepository;
 import com.aisched.scheduler.repository.TaskLogRepository;
 import com.aisched.scheduler.repository.TaskPackageRepository;
 import com.aisched.scheduler.repository.TaskRepository;
+import com.aisched.scheduler.websocket.DashboardHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.client.RestTemplate;
+import java.io.OutputStream;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -28,19 +38,35 @@ public class TaskService {
     private final TaskLogRepository logRepository;
     private final RedisTaskQueue taskQueue;
     private final TaskPackageRepository pkgRepository;
+    private final GpuNodeRepository gpuNodeRepository;
+    private final DashboardHandler dashboardHandler;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate proxyRestTemplate;
+    private final RestTemplate streamingRestTemplate;
 
     public TaskService(TaskRepository taskRepository, TaskLogRepository logRepository,
-                       RedisTaskQueue taskQueue, TaskPackageRepository pkgRepository) {
+                       RedisTaskQueue taskQueue, TaskPackageRepository pkgRepository,
+                       GpuNodeRepository gpuNodeRepository,
+                       DashboardHandler dashboardHandler) {
         this.taskRepository = taskRepository;
         this.logRepository = logRepository;
         this.taskQueue = taskQueue;
         this.pkgRepository = pkgRepository;
+        this.gpuNodeRepository = gpuNodeRepository;
+        this.dashboardHandler = dashboardHandler;
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(30_000);
+        factory.setReadTimeout(60_000);
+        this.proxyRestTemplate = new RestTemplate(factory);
+        SimpleClientHttpRequestFactory streamFactory = new SimpleClientHttpRequestFactory();
+        streamFactory.setConnectTimeout(30_000);
+        streamFactory.setReadTimeout(300_000);
+        this.streamingRestTemplate = new RestTemplate(streamFactory);
     }
 
     @Transactional
     public Task submit(String name, String type, String modelName, String datasetPath,
-                        String outputPath, Map<String, Object> params, int priority) {
+                        String outputPath, Map<String, Object> params, int priority, Long userId) {
         Task task = new Task();
         task.setId(UUID.randomUUID().toString());
         task.setName(name);
@@ -51,6 +77,7 @@ public class TaskService {
         task.setPriority(priority);
         task.setStatus(TaskStatus.PENDING);
         task.setCreatedAt(LocalDateTime.now());
+        task.setUserId(userId);
 
         if (params != null && !params.isEmpty()) {
             task.setParams(toJson(params));
@@ -62,6 +89,12 @@ public class TaskService {
         return task;
     }
 
+    @Transactional
+    public Task submit(String name, String type, String modelName, String datasetPath,
+                        String outputPath, Map<String, Object> params, int priority) {
+        return submit(name, type, modelName, datasetPath, outputPath, params, priority, null);
+    }
+
     public TaskStatusResponse getTask(String taskId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("任务不存在: " + taskId));
@@ -69,11 +102,20 @@ public class TaskService {
     }
 
     public Page<TaskStatusResponse> listTasks(TaskStatus status, int page, int size) {
+        return listTasks(status, page, size, null);
+    }
+
+    public Page<TaskStatusResponse> listTasks(TaskStatus status, int page, int size, Long userId) {
         Page<Task> tasks;
-        if (status != null) {
-            tasks = taskRepository.findByStatus(status, PageRequest.of(page, size));
+        Pageable pageable = PageRequest.of(page, size);
+        if (userId != null) {
+            tasks = status != null
+                    ? taskRepository.findByUserIdAndStatusSorted(userId, status, pageable)
+                    : taskRepository.findByUserIdSorted(userId, pageable);
         } else {
-            tasks = taskRepository.findAll(PageRequest.of(page, size));
+            tasks = status != null
+                    ? taskRepository.findByStatusSorted(status, pageable)
+                    : taskRepository.findAllSorted(pageable);
         }
         return tasks.map(this::toResponse);
     }
@@ -85,10 +127,12 @@ public class TaskService {
         if (task.getStatus() == TaskStatus.COMPLETED || task.getStatus() == TaskStatus.FAILED) {
             throw new IllegalArgumentException("任务已处于终态，无法取消");
         }
+        String oldStatus = task.getStatus().name();
         task.setStatus(TaskStatus.CANCELLED);
         task.setFinishedAt(LocalDateTime.now());
         taskQueue.remove(taskId);
         taskRepository.save(task);
+        pushStatusChange(taskId, oldStatus, "CANCELLED");
         log.info("Task cancelled: {}", taskId);
     }
 
@@ -99,6 +143,7 @@ public class TaskService {
         logRepository.deleteAll();
         pkgRepository.deleteAll();
         taskRepository.deleteAll();
+        pushStatusChange("__all__", "ANY", "PURGED");
         log.info("Purged all tasks: {} records", count);
         return count;
     }
@@ -106,6 +151,10 @@ public class TaskService {
     @Transactional
     public void updateStatus(String taskId, TaskStatus newStatus, String errorMsg) {
         taskRepository.findById(taskId).ifPresent(task -> {
+            TaskStatus old = task.getStatus();
+            if (old == newStatus) return;
+            if (old == TaskStatus.COMPLETED || old == TaskStatus.FAILED || old == TaskStatus.CANCELLED) return;
+            String oldName = old.name();
             task.setStatus(newStatus);
             if (errorMsg != null && !errorMsg.isBlank()) {
                 task.setErrorMsg(errorMsg);
@@ -117,7 +166,12 @@ public class TaskService {
                 task.setFinishedAt(LocalDateTime.now());
             }
             taskRepository.save(task);
+            pushStatusChange(taskId, oldName, newStatus.name());
         });
+    }
+
+    private void pushStatusChange(String taskId, String oldStatus, String newStatus) {
+        dashboardHandler.pushTaskStatusChange(taskId, oldStatus, newStatus);
     }
 
     @Transactional
@@ -216,32 +270,131 @@ public class TaskService {
         }
         r.setLogPath(task.getLogPath());
         r.setErrorMsg(task.getErrorMsg());
+        if (task.getPackageId() != null) {
+            pkgRepository.findById(task.getPackageId()).ifPresent(pkg -> {
+                if (pkg.getFileSize() != null) r.setPackageFileSize(pkg.getFileSize());
+            });
+        }
         return r;
     }
 
-    /** 获取训练日志全文（从 Worker 的 output/logs/training.log 读取） */
     public String getTaskLogs(String taskId) {
         Task task = taskRepository.findById(taskId).orElse(null);
         if (task == null) return "";
-        // logs 存储在 Worker 节点上，需要通过 Worker API 获取
-        // 当前返回 Scheduler 端的 task_logs 表内容
-        return "Logs available on Worker node. Use worker-specific log endpoint.";
+        String baseUrl = resolveWorkerBaseUrl(task);
+        if (baseUrl == null) return "";
+        try {
+            ResponseEntity<Map> resp = proxyRestTemplate.getForEntity(
+                    baseUrl + "/api/v1/tasks/" + taskId + "/logs", Map.class);
+            if (resp.getBody() != null) {
+                Object logs = resp.getBody().get("logs");
+                return logs != null ? logs.toString() : "";
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch logs from Worker for task {}: {}", taskId, e.getMessage());
+        }
+        return "";
     }
 
-    /** 获取训练日志尾部 N 行 */
     public String getTaskLogsTail(String taskId, int lines) {
-        return getTaskLogs(taskId); // 简化实现，后续通过 Worker API 代理
+        Task task = taskRepository.findById(taskId).orElse(null);
+        if (task == null) return "";
+        String baseUrl = resolveWorkerBaseUrl(task);
+        if (baseUrl == null) return "";
+        try {
+            ResponseEntity<Map> resp = proxyRestTemplate.getForEntity(
+                    baseUrl + "/api/v1/tasks/" + taskId + "/logs/tail?lines=" + lines, Map.class);
+            if (resp.getBody() != null) {
+                Object logs = resp.getBody().get("logs");
+                return logs != null ? logs.toString() : "";
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch log tail from Worker for task {}: {}", taskId, e.getMessage());
+        }
+        return "";
     }
 
-    /** 获取指标历史（从 metrics JSON 字段解析） */
+    @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getMetricsHistory(String taskId) {
         Task task = taskRepository.findById(taskId).orElse(null);
-        if (task == null || task.getMetrics() == null) return List.of();
-        try {
-            return List.of(objectMapper.readValue(task.getMetrics(), Map.class));
-        } catch (Exception e) {
-            return List.of();
+        if (task == null) return List.of();
+        String baseUrl = resolveWorkerBaseUrl(task);
+        if (baseUrl != null) {
+            try {
+                ResponseEntity<Map> resp = proxyRestTemplate.getForEntity(
+                        baseUrl + "/api/v1/tasks/" + taskId + "/metrics", Map.class);
+                if (resp.getBody() != null) {
+                    Object history = resp.getBody().get("history");
+                    if (history instanceof List) {
+                        return (List<Map<String, Object>>) history;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch metrics from Worker for task {}: {}", taskId, e.getMessage());
+            }
         }
+        if (task.getMetrics() != null) {
+            try {
+                return List.of(objectMapper.readValue(task.getMetrics(), Map.class));
+            } catch (Exception ignored) {}
+        }
+        return List.of();
+    }
+
+    public void streamArtifacts(String taskId, OutputStream outputStream) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在: " + taskId));
+        String baseUrl = resolveWorkerBaseUrl(task);
+        if (baseUrl == null) {
+            throw new IllegalStateException("Worker 不可达: 无法解析节点地址");
+        }
+        streamingRestTemplate.execute(
+                baseUrl + "/api/v1/tasks/" + taskId + "/artifacts/download",
+                HttpMethod.GET, null,
+                response -> { StreamUtils.copy(response.getBody(), outputStream); return null; });
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> listArtifacts(String taskId) {
+        Task task = taskRepository.findById(taskId).orElse(null);
+        if (task == null) return List.of();
+        String baseUrl = resolveWorkerBaseUrl(task);
+        if (baseUrl == null) return List.of();
+        try {
+            ResponseEntity<Map> resp = proxyRestTemplate.getForEntity(
+                    baseUrl + "/api/v1/tasks/" + taskId + "/artifacts/list", Map.class);
+            if (resp.getBody() != null) {
+                Object files = resp.getBody().get("files");
+                if (files instanceof List) {
+                    return (List<Map<String, Object>>) files;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to list artifacts from Worker for task {}: {}", taskId, e.getMessage());
+        }
+        return List.of();
+    }
+
+    public void streamArtifactFile(String taskId, String path, OutputStream outputStream) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在: " + taskId));
+        String baseUrl = resolveWorkerBaseUrl(task);
+        if (baseUrl == null) {
+            throw new IllegalStateException("Worker 不可达: 无法解析节点地址");
+        }
+        String encodedPath = java.net.URLEncoder.encode(path, java.nio.charset.StandardCharsets.UTF_8);
+        java.net.URI uri = java.net.URI.create(baseUrl + "/api/v1/tasks/" + taskId + "/artifacts/file?path=" + encodedPath);
+        streamingRestTemplate.execute(
+                uri, HttpMethod.GET, null,
+                response -> { StreamUtils.copy(response.getBody(), outputStream); return null; });
+    }
+
+    private String resolveWorkerBaseUrl(Task task) {
+        if (task.getNodeId() == null) return null;
+        Optional<GpuNode> nodeOpt = gpuNodeRepository.findById(task.getNodeId());
+        if (nodeOpt.isEmpty()) return null;
+        GpuNode node = nodeOpt.get();
+        return "http://" + node.getPublicIp() + ":" + node.getApiPort();
     }
 
     /** 获取队列状态 */
@@ -269,6 +422,79 @@ public class TaskService {
             status.put("queuePosition", queuePosition);
         }
         return status;
+    }
+
+    @Transactional
+    public Map<String, Object> batchCancel(List<String> taskIds) {
+        int success = 0, failed = 0;
+        for (String id : taskIds) {
+            try {
+                cancel(id);
+                success++;
+            } catch (Exception e) {
+                failed++;
+                log.warn("Batch cancel failed for {}: {}", id, e.getMessage());
+            }
+        }
+        return Map.of("success", success, "failed", failed);
+    }
+
+    @Transactional
+    public List<TaskStatusResponse> batchRetry(List<String> taskIds) {
+        List<TaskStatusResponse> results = new ArrayList<>();
+        for (String id : taskIds) {
+            try {
+                Task original = taskRepository.findById(id)
+                        .orElseThrow(() -> new IllegalArgumentException("任务不存在: " + id));
+                if (original.getStatus() != TaskStatus.FAILED) continue;
+                Task cloned = cloneTaskInternal(original);
+                results.add(toResponse(cloned));
+            } catch (Exception e) {
+                log.warn("Batch retry failed for {}: {}", id, e.getMessage());
+            }
+        }
+        return results;
+    }
+
+    @Transactional
+    public TaskStatusResponse cloneTask(String taskId) {
+        Task original = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在: " + taskId));
+        Task cloned = cloneTaskInternal(original);
+        return toResponse(cloned);
+    }
+
+    private Task cloneTaskInternal(Task original) {
+        Task task = new Task();
+        task.setId(UUID.randomUUID().toString());
+        task.setName(original.getName());
+        task.setType(original.getType());
+        task.setModelName(original.getModelName());
+        task.setDatasetPath(original.getDatasetPath());
+        task.setOutputPath(original.getOutputPath());
+        task.setParams(original.getParams());
+        task.setPackageId(original.getPackageId());
+        task.setPriority(original.getPriority());
+        task.setStatus(TaskStatus.PENDING);
+        task.setCreatedAt(LocalDateTime.now());
+        taskRepository.save(task);
+        taskQueue.enqueue(task.getId());
+        log.info("Task cloned: {} -> {} [{}]", original.getId(), task.getName(), task.getId());
+        return task;
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> compareTasks(List<String> taskIds) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (String id : taskIds) {
+            Task task = taskRepository.findById(id).orElse(null);
+            if (task == null) continue;
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("task", toResponse(task));
+            entry.put("metricsHistory", getMetricsHistory(id));
+            results.add(entry);
+        }
+        return results;
     }
 
     private String toJson(Object obj) {

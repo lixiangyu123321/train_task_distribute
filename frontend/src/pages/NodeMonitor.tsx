@@ -1,44 +1,62 @@
-import { useApi } from '../hooks/useApi';
+import { useRealtimeData } from '../hooks/useRealtimeData';
 import { fetchNodes } from '../services/api';
 import NodeCard from '../components/NodeCard';
 import GpuGauge from '../components/GpuGauge';
 import ResourceChart from '../components/ResourceChart';
 import NodeManager from '../components/NodeManager';
+import { SkeletonCard } from '../components/Skeleton';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function NodeMonitor() {
-  const { data: nodes, loading } = useApi(fetchNodes, 3000);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'ADMIN';
+  const wsExtract = (msg: any) => {
+    const snapshot = msg.payload as Record<string, any> | undefined;
+    return (snapshot?.nodes as any[]) ?? null;
+  };
+  const { data: nodes, loading, refresh, source } = useRealtimeData(fetchNodes, 15000, {
+    type: 'DASHBOARD_SNAPSHOT',
+    extract: wsExtract,
+  });
   const [searchParams] = useSearchParams();
   const initTab = searchParams.get('tab') === 'manage' ? 'manage' : 'monitor';
   const [tab, setTab] = useState<'monitor' | 'manage'>(initTab);
 
   if (loading && !nodes) return (
-    <div style={{ textAlign: 'center', padding: 60, color: 'var(--dim)', fontFamily: "'Press Start 2P', monospace", fontSize: 8 }}>
-      LOADING...
+    <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+      {[1,2,3].map(i => <div key={i} style={{ flex: '1 1 250px' }}><SkeletonCard height={140} /></div>)}
     </div>
   );
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h2>◈ GPU NODES</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h2>◈ GPU NODES</h2>
+          <span style={{
+            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+            background: source === 'ws' ? 'var(--green)' : 'var(--gold)',
+          }} />
+        </div>
         <div style={{ display: 'flex', gap: 0 }}>
           <button onClick={() => setTab('monitor')}
             className={`btn ${tab === 'monitor' ? 'cyan' : ''}`}
-            style={{ fontSize: 7, borderRadius: '4px 0 0 4px' }}>
+            style={{ fontSize: 7, borderRadius: isAdmin ? '4px 0 0 4px' : '4px' }}>
             ◆ MONITOR
           </button>
-          <button onClick={() => setTab('manage')}
-            className={`btn ${tab === 'manage' ? 'cyan' : ''}`}
-            style={{ fontSize: 7, borderRadius: '0 4px 4px 0' }}>
-            ◇ MANAGE
-          </button>
+          {isAdmin && (
+            <button onClick={() => setTab('manage')}
+              className={`btn ${tab === 'manage' ? 'cyan' : ''}`}
+              style={{ fontSize: 7, borderRadius: '0 4px 4px 0' }}>
+              ◇ MANAGE
+            </button>
+          )}
         </div>
       </div>
 
       {tab === 'manage' ? (
-        <NodeManager />
+        <NodeManager nodes={nodes} loading={loading} refresh={refresh} />
       ) : (
         <>
           {(!nodes || nodes.length === 0) ? (

@@ -70,6 +70,9 @@ public class Task {
     @Column(name = "log_path", length = 500)
     private String logPath;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     public enum TaskType {
         TRAIN, FINETUNE, EVAL, FULL
     }
@@ -116,4 +119,6 @@ public class Task {
     public void setMetrics(String metrics) { this.metrics = metrics; }
     public String getLogPath() { return logPath; }
     public void setLogPath(String logPath) { this.logPath = logPath; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 }

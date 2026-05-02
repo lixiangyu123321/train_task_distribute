@@ -1,11 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
+import Toast from './Toast';
 
 const nav = [
-  { path: '/', label: 'BRIDGE',     icon: '◆' },
-  { path: '/tasks', label: 'MISSIONS', icon: '◇' },
-  { path: '/nodes', label: 'BAYS',    icon: '◈' },
-  { path: '/submit', label: 'CARGO',   icon: '◻' },
-  { path: '/tutorial', label: 'GUIDE',  icon: '◉' },
+  { path: '/', label: 'DASHBOARD',  icon: '◆' },
+  { path: '/tasks', label: 'TASKS',    icon: '◇' },
+  { path: '/nodes', label: 'NODES',    icon: '◈' },
+  { path: '/submit', label: 'SUBMIT',   icon: '◻' },
+  { path: '/templates', label: 'TEMPLATES', icon: '◎' },
+  { path: '/schedules', label: 'SCHEDULES', icon: '◷' },
+  { path: '/tutorial', label: 'TUTORIAL', icon: '◉' },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -21,13 +24,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           background: 'linear-gradient(180deg, rgba(240,192,64,0.06), transparent)',
         }}>
           <div style={{ fontSize: 26, marginBottom: 4, filter: 'drop-shadow(0 0 4px rgba(240,192,64,0.4))' }}>
-            ⭐
+            🖥️
           </div>
           <div style={{ font: '9px var(--font-pixel)', color: 'var(--gold)', letterSpacing: 2 }}>
-            STAR OFFICE
+            GPU SCHEDULER
           </div>
           <div style={{ font: '6px var(--font-mono)', color: 'var(--muted)', marginTop: 2 }}>
-            AI SCHEDULER v3
+            AI TRAIN DISPATCH
           </div>
         </div>
 
@@ -60,14 +63,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           background: 'var(--bg-deep)', textAlign: 'center',
           font: '6px var(--font-pixel)', color: 'var(--muted)', lineHeight: 2,
         }}>
-          <div>SYS <span style={{ color: 'var(--green)' }}>●</span> NOMINAL</div>
-          <div style={{ fontSize: 5, color: 'var(--border-lit)', marginTop: 2 }}>© 2026 DEEP SCHEDULER</div>
+          {(() => {
+            const userStr = localStorage.getItem('user');
+            const user = userStr ? JSON.parse(userStr) : null;
+            return user ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--white)' }}>{user.username}</span>
+                  <span className={`badge ${user.role === 'ADMIN' ? 'gold' : 'cyan'}`} style={{ fontSize: 5 }}>
+                    {user.role}
+                  </span>
+                </div>
+                <button className="btn red" style={{ fontSize: 5, padding: '3px 8px', width: '100%' }}
+                  onClick={() => {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/login';
+                  }}>
+                  LOGOUT
+                </button>
+              </>
+            ) : (
+              <div>SYS <span style={{ color: 'var(--green)' }}>●</span> NOMINAL</div>
+            );
+          })()}
+          <div style={{ fontSize: 5, color: 'var(--border-lit)', marginTop: 2 }}>© 2026 GPU SCHEDULER</div>
         </div>
       </aside>
 
       <main className="app-main" style={{ position: 'relative', zIndex: 2 }}>
         {children}
       </main>
+      <Toast />
     </div>
   );
 }

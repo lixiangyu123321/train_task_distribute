@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { subscribeTopic, publish, getConnState } from '../services/ws';
 import { fetchTaskLogsTail } from '../services/api';
 
 type Props = { taskId: string; autoRefresh?: boolean };
@@ -8,13 +9,52 @@ export default function LogStream({ taskId, autoRefresh = true }: Props) {
   const [loading, setLoading] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
+  /* WebSocket log streaming (preferred) */
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const topic = `/topic/task-log-stream/${taskId}`;
+    const unsub = subscribeTopic(topic, (msg: any) => {
+      if (msg?.payload?.logs) {
+        setLogs(msg.payload.logs);
+        setLoading(false);
+      }
+    });
+
+    /* tell backend we're watching this task's logs */
+    publish('/app/logs/subscribe', { taskId });
+
+    return () => {
+      unsub();
+      publish('/app/logs/unsubscribe', { taskId });
+    };
+  }, [taskId, autoRefresh]);
+
+  /* Fallback HTTP polling (when WS disconnects or autoRefresh=false) */
   useEffect(() => {
     const load = async () => {
-      try { const d = await fetchTaskLogsTail(taskId, 200); setLogs(d.logs || '[ NO LOGS ]'); }
-      catch { setLogs('[ LOAD FAILED ]'); } finally { setLoading(false); }
+      if (getConnState() === 'CONNECTED' && autoRefresh) return; /* WS handles it */
+      try {
+        const d = await fetchTaskLogsTail(taskId, 200);
+        setLogs(d.logs || '[ NO LOGS ]');
+      } catch {
+        if (!logs) setLogs('[ LOAD FAILED ]');
+      } finally {
+        setLoading(false);
+      }
     };
-    load();
-    if (autoRefresh) { const t = setInterval(load, 5000); return () => clearInterval(t); }
+    if (!autoRefresh || getConnState() !== 'CONNECTED') {
+      load();
+    }
+
+    if (autoRefresh) {
+      const t = setInterval(() => {
+        if (getConnState() === 'CONNECTED') return; /* skip poll when WS active */
+        load();
+      }, 5000);
+      return () => clearInterval(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, autoRefresh]);
 
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [logs]);

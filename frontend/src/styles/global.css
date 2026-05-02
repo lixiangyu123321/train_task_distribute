@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   STAR OFFICE UI — 像素游戏工作室主题
+   GPU SCHEDULER UI — 分布式GPU调度控制台
    16-bit era palette · game HUD · space station
    ═══════════════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -151,7 +151,8 @@ table tbody tr:hover { background: var(--bg-hover); }
 }
 .bar-fill.gold  { background: repeating-linear-gradient(90deg, var(--gold) 0px, var(--gold) 6px, var(--gold-dim) 6px, var(--gold-dim) 8px); }
 .bar-fill.green { background: repeating-linear-gradient(90deg, var(--green) 0px, var(--green) 6px, var(--green-dim) 6px, var(--green-dim) 8px); }
-.bar-fill.red   { background: repeating-linear-gradient(90deg, var(--red) 0px, var(--red) 6px, var(--red-dim) 6px, var(--red-dim) 8px); }
+.bar-fill.red    { background: repeating-linear-gradient(90deg, var(--red) 0px, var(--red) 6px, var(--red-dim) 6px, var(--red-dim) 8px); }
+.bar-fill.purple { background: repeating-linear-gradient(90deg, var(--purple) 0px, var(--purple) 6px, var(--purple-dim) 6px, var(--purple-dim) 8px); }
 
 /* ═══ 游戏徽章 .badge ═══ */
 .badge {
@@ -209,3 +210,9 @@ table tbody tr:hover { background: var(--bg-hover); }
 /* 响应式 */
 @media (max-width: 900px) { .app-layout { grid-template-columns: 160px 1fr; } .app-main { padding: 14px; } }
 @media (max-width: 700px) { .app-layout { grid-template-columns: 1fr; } .app-sidebar { display: none; } }
+
+/* ═══ Animations ═══ */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

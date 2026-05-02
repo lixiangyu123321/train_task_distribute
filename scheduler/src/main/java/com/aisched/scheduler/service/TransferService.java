@@ -110,6 +110,13 @@ public class TransferService {
         return Files.readAllBytes(Path.of(pkg.getFilePath()));
     }
 
+    /** 获取存储的 ZIP 文件路径 */
+    public Path getPackageFilePath(String packageId) {
+        TaskPackage pkg = pkgRepo.findById(packageId)
+                .orElseThrow(() -> new IllegalArgumentException("Package not found: " + packageId));
+        return Path.of(pkg.getFilePath());
+    }
+
     /** 获取下载 URL（Scheduler 对外地址） */
     public String getDownloadUrl(String packageId) {
         return "http://" + appConfig.getPublicIp() + ":" + serverPort + "/api/v1/transfer/download/" + packageId;

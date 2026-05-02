@@ -1,19 +1,30 @@
-import { useApi } from '../hooks/useApi';
+import { useRealtimeData } from '../hooks/useRealtimeData';
 import { fetchDashboard } from '../services/api';
 import StudioCanvas from '../components/StudioCanvas';
 import { useNavigate } from 'react-router-dom';
 import type { NodeItem } from '../types';
+import { SkeletonCard } from '../components/Skeleton';
 
 export default function Dashboard() {
-  const { data: s, loading } = useApi(fetchDashboard, 5000);
+  const { data: s, loading, source } = useRealtimeData(fetchDashboard, 5000, {
+    type: 'DASHBOARD_SNAPSHOT',
+    extract: (msg) => (msg.payload as any) ?? null,
+  });
   const nav = useNavigate();
-  if (loading && !s) return <div style={{ textAlign: 'center', padding: 80, color: 'var(--gold)', font: '8px var(--font-pixel)' }}>INITIALIZING...</div>;
+  if (loading && !s) return (
+    <div>
+      <div className="hud-row" style={{ marginBottom: 20 }}>
+        {[1,2,3,4,5].map(i => <SkeletonCard key={i} height={80} />)}
+      </div>
+      <SkeletonCard height={400} />
+    </div>
+  );
   if (!s) return null;
 
   const { totalTasks, nodes, clusterUtilization } = s;
-  const p = totalTasks?.pending || 0, q = totalTasks?.queued || 0, r = totalTasks?.running || 0;
+  const p = totalTasks?.pending || 0, d = totalTasks?.dispatching || 0, q = totalTasks?.queued || 0, r = totalTasks?.running || 0;
   const stats = [
-    { label: 'QUEUED', v: p+q, color: 'cyan', status: 'PENDING' },
+    { label: 'QUEUED', v: p+d+q, color: 'cyan', status: 'PENDING' },
     { label: 'ACTIVE', v: r, color: 'gold', status: 'RUNNING' },
     { label: 'DONE', v: totalTasks?.completed || 0, color: 'green', status: 'COMPLETED' },
     { label: 'LOST', v: totalTasks?.failed || 0, color: 'red', status: 'FAILED' },
@@ -22,7 +33,13 @@ export default function Dashboard() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2>◆ BRIDGE</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h2>◆ DASHBOARD</h2>
+          <span style={{
+            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+            background: source === 'ws' ? 'var(--green)' : 'var(--gold)',
+          }} />
+        </div>
         <span className="badge gold">GPU LOAD {clusterUtilization}%</span>
       </div>
 
@@ -52,6 +69,9 @@ export default function Dashboard() {
       <StudioCanvas
         nodes={(nodes || []) as NodeItem[]}
         pendingTasks={p} queuedTasks={q} runningTasks={r}
+        completedTasks={totalTasks?.completed || 0}
+        failedTasks={totalTasks?.failed || 0}
+        dispatchingTasks={d}
         onNodeClick={() => nav('/nodes')}
         onAddNode={() => nav('/nodes?tab=manage')}
         onRemoveNode={() => nav('/nodes')}
@@ -59,9 +79,9 @@ export default function Dashboard() {
 
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ font: '6px var(--font-pixel)', color: 'var(--muted)' }}>
-          TIP: SUBMIT A CARGO TO SEE THE HUB IN ACTION
+          TIP: SUBMIT A TASK TO SEE THE PIPELINE IN ACTION
         </span>
-        <button className="btn gold sm" onClick={() => nav('/submit')}>DEPLOY CARGO ▶</button>
+        <button className="btn gold sm" onClick={() => nav('/submit')}>SUBMIT TASK ▶</button>
       </div>
     </div>
   );

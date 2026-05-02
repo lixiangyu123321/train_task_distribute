@@ -20,6 +20,7 @@ public class TaskStatusResponse {
     private String packageId;
     private Map<String, Object> metrics;
     private String logPath;
+    private Long packageFileSize;
 
     public String getTaskId() { return taskId; }
     public void setTaskId(String taskId) { this.taskId = taskId; }
@@ -49,4 +50,6 @@ public class TaskStatusResponse {
     public void setMetrics(Map<String, Object> metrics) { this.metrics = metrics; }
     public String getLogPath() { return logPath; }
     public void setLogPath(String logPath) { this.logPath = logPath; }
+    public Long getPackageFileSize() { return packageFileSize; }
+    public void setPackageFileSize(Long packageFileSize) { this.packageFileSize = packageFileSize; }
 }

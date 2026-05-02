@@ -109,13 +109,13 @@ python cli.py list-tasks --status RUNNING`}</Block>
           ◇ STEP 4 — SUBMIT VIA WEB UI
         </h3>
         <ol style={{ font: '7px var(--font-pixel)', color: 'var(--dim)', lineHeight: 2.4, margin: 0, paddingLeft: 16 }}>
-          <li>前往 <Link to="/submit" style={{ color: 'var(--cyan)' }}>CARGO ◻</Link> 页面</li>
+          <li>前往 <Link to="/submit" style={{ color: 'var(--cyan)' }}>SUBMIT ◻</Link> 页面</li>
           <li>选择 <b style={{ color: 'var(--cyan)' }}>ZIP UPLOAD</b> 模式</li>
           <li>拖拽 <C>.zip</C> 文件到虚线区域，或点击选择文件</li>
-          <li>输入 MISSION NAME（可选，默认取文件名）</li>
+          <li>输入 <C>TASK NAME</C>（可选，默认取文件名）</li>
           <li>点击 <b style={{ color: 'var(--cyan)' }}>STAGE 1: UPLOAD</b> 上传文件</li>
           <li>确认系统检测到的任务类型无误后，点击 <b style={{ color: 'var(--gold)' }}>STAGE 2: DEPLOY</b></li>
-          <li>前往 <Link to="/tasks" style={{ color: 'var(--cyan)' }}>MISSIONS ◇</Link> 查看任务执行状态</li>
+          <li>前往 <Link to="/tasks" style={{ color: 'var(--cyan)' }}>TASKS ◇</Link> 查看任务执行状态</li>
           <li>点击具体任务查看日志、指标图表和进度时间线</li>
         </ol>
       </div>
@@ -148,8 +148,8 @@ python ../../client/cli.py submit --file ./task-package.zip`}</Block>
       </div>
 
       <div style={{ marginTop: 14, display: 'flex', gap: 10, justifyContent: 'center' }}>
-        <Link to="/submit" className="btn gold">GO TO CARGO BAY ◻</Link>
-        <Link to="/" className="btn cyan">BACK TO BRIDGE ◆</Link>
+        <Link to="/submit" className="btn gold">GO TO SUBMIT ◻</Link>
+        <Link to="/" className="btn cyan">BACK TO DASHBOARD ◆</Link>
       </div>
     </div>
   );

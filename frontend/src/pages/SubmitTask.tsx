@@ -1,14 +1,25 @@
-import { useState, useRef, DragEvent } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { submitTask, uploadTaskPackage, submitFromPackage } from '../services/api';
+import { submitTask, uploadTaskPackage, submitFromPackage, fetchTemplates } from '../services/api';
+import { useApi } from '../hooks/useApi';
+
+interface UploadProgress {
+  loaded: number;
+  total: number;
+  percent: number;
+  startTime: number;
+}
 
 export default function SubmitTask() {
   const nav = useNavigate(); const fileRef = useRef<HTMLInputElement>(null);
+  const { data: templates } = useApi(fetchTemplates);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [mode, setMode] = useState<'zip' | 'json'>('zip');
   const [file, setFile] = useState<File | null>(null); const [drag, setDrag] = useState(false);
   const [uploading, setUploading] = useState(false); const [result, setResult] = useState<Record<string,unknown>|null>(null);
   const [name, setName] = useState(''); const [err, setErr] = useState(''); const [sub, setSub] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [form, setForm] = useState({ name: '', type: 'FINETUNE', modelName: '', datasetPath: '', loraRank: '16', loraAlpha: '32', learningRate: '2e-5', epochs: '3', batchSize: '4' });
 
   const F = ({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) => (
@@ -18,10 +29,20 @@ export default function SubmitTask() {
     </div>
   );
 
+  const formatSpeed = (bytesPerSec: number) => {
+    if (bytesPerSec > 1024 * 1024) return (bytesPerSec / 1024 / 1024).toFixed(1) + ' MB/s';
+    return (bytesPerSec / 1024).toFixed(0) + ' KB/s';
+  };
+
+  const formatTime = (sec: number) => {
+    if (sec < 60) return Math.ceil(sec) + 's';
+    return Math.floor(sec / 60) + 'm ' + Math.ceil(sec % 60) + 's';
+  };
+
   return (
     <div style={{ maxWidth: 560 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>◻ CARGO BAY</h2>
+        <h2>◻ SUBMIT TASK</h2>
         <Link to="/tutorial" style={{ font: '6px var(--font-pixel)', color: 'var(--cyan)', textDecoration: 'none', border: '2px solid var(--border)', padding: '5px 10px' }}>◉ TUTORIAL</Link>
       </div>
       <div className="divider" />
@@ -35,13 +56,57 @@ export default function SubmitTask() {
             onClick={() => fileRef.current?.click()}
             style={{ border: `2px dashed ${drag ? 'var(--cyan)' : 'var(--border)'}`, padding: 30, textAlign: 'center', cursor: 'pointer', background: drag ? 'rgba(64,216,240,0.05)' : 'var(--bg-deep)', marginBottom: 12 }}>
             <div style={{ fontSize: 28 }}>{file ? '📦' : '⬇'}</div>
-            <div style={{ font: '7px var(--font-pixel)', color: 'var(--cyan)' }}>{file ? file.name : 'DROP CARGO HERE'}</div>
+            <div style={{ font: '7px var(--font-pixel)', color: 'var(--cyan)' }}>{file ? file.name : 'DROP FILE HERE'}</div>
             <input ref={fileRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setName(f.name.replace('.zip', '')); } }} />
           </div>
           {file && (<>
             <F label="MISSION NAME" value={name} onChange={v => setName(v)} />
+
+            {uploadProgress && (
+              <div style={{ marginBottom: 10 }}>
+                <div className="bar" style={{ height: 18, position: 'relative' }}>
+                  <div className="bar-fill cyan" style={{ width: `${uploadProgress.percent}%`, transition: 'width 0.3s' }} />
+                  <span style={{
+                    position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    font: '7px var(--font-pixel)', color: 'var(--white)', textShadow: '0 0 4px #000',
+                  }}>
+                    {uploadProgress.percent}%
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, font: '6px var(--font-pixel)', color: 'var(--dim)' }}>
+                  <span>
+                    {(uploadProgress.loaded / 1024 / 1024).toFixed(1)} / {(uploadProgress.total / 1024 / 1024).toFixed(1)} MB
+                  </span>
+                  <span>
+                    {(() => {
+                      const elapsed = (Date.now() - uploadProgress.startTime) / 1000;
+                      if (elapsed < 0.5) return '...';
+                      const speed = uploadProgress.loaded / elapsed;
+                      const remaining = (uploadProgress.total - uploadProgress.loaded) / speed;
+                      return formatSpeed(speed) + ' — ' + formatTime(remaining) + ' left';
+                    })()}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {!result ? (
-              <button className="btn cyan" disabled={uploading} onClick={async () => { setUploading(true); setErr(''); try { const r = await uploadTaskPackage(file, name); setResult(r.data as Record<string,unknown>); } catch (e) { const msg = axios.isAxiosError(e) ? (e.response?.data?.message || e.message) : (e as Error).message; setErr(msg); } finally { setUploading(false); } }} style={{ width: '100%' }}>
+              <button className="btn cyan" disabled={uploading} onClick={async () => {
+                setUploading(true); setErr('');
+                const startTime = Date.now();
+                setUploadProgress({ loaded: 0, total: file.size, percent: 0, startTime });
+                try {
+                  const r = await uploadTaskPackage(file, name, (e) => {
+                    const total = e.total || file.size;
+                    setUploadProgress({ loaded: e.loaded, total, percent: Math.min(99, Math.round(e.loaded / total * 100)), startTime });
+                  });
+                  setUploadProgress(null);
+                  setResult(r.data as Record<string,unknown>);
+                } catch (e) {
+                  const msg = axios.isAxiosError(e) ? (e.response?.data?.message || e.message) : (e as Error).message;
+                  setErr(msg); setUploadProgress(null);
+                } finally { setUploading(false); }
+              }} style={{ width: '100%' }}>
                 {uploading ? 'UPLOADING...' : 'STAGE 1: UPLOAD'}
               </button>
             ) : (<>
@@ -54,11 +119,35 @@ export default function SubmitTask() {
             </>)}
           </>)}
         </>) : (<>
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ font: '6px var(--font-pixel)', color: 'var(--dim)', marginBottom: 2 }}>TEMPLATE</div>
+            <select value={selectedTemplate} onChange={e => {
+              setSelectedTemplate(e.target.value);
+              if (e.target.value) {
+                const tpl = templates?.find(t => t.id === e.target.value);
+                if (tpl) {
+                  setForm(p => ({
+                    ...p,
+                    type: tpl.type,
+                    ...(tpl.defaultParams as any),
+                    loraRank: String(tpl.defaultParams.loraRank || p.loraRank),
+                    loraAlpha: String(tpl.defaultParams.loraAlpha || p.loraAlpha),
+                    learningRate: String(tpl.defaultParams.learningRate || p.learningRate),
+                    epochs: String(tpl.defaultParams.epochs || p.epochs),
+                    batchSize: String(tpl.defaultParams.batchSize || p.batchSize),
+                  }));
+                }
+              }
+            }} style={{ width: '100%' }}>
+              <option value="">-- NO TEMPLATE --</option>
+              {templates?.map(t => <option key={t.id} value={t.id}>{t.name} ({t.type})</option>)}
+            </select>
+          </div>
           <F label="MISSION NAME" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} />
           <div style={{ marginBottom: 8 }}>
             <div style={{ font: '6px var(--font-pixel)', color: 'var(--dim)', marginBottom: 2 }}>TYPE</div>
             <select value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))} style={{ width: '100%' }}>
-              <option value="TRAIN">TRAIN</option><option value="FINETUNE">FINETUNE</option><option value="EVAL">EVAL</option>
+              <option value="TRAIN">TRAIN</option><option value="FINETUNE">FINETUNE</option><option value="EVAL">EVAL</option><option value="FULL">FULL</option>
             </select>
           </div>
           <F label="MODEL" value={form.modelName} onChange={v => setForm(p => ({ ...p, modelName: v }))} />

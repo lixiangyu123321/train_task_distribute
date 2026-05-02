@@ -1,6 +1,6 @@
 import type { TaskStatus, NodeStatus } from '../types';
 const m: Record<string, string> = {
-  PENDING: 'dim', QUEUED: 'cyan', RUNNING: 'gold', COMPLETED: 'green', FAILED: 'red', CANCELLED: 'dim',
+  PENDING: 'dim', DISPATCHING: 'purple', QUEUED: 'cyan', RUNNING: 'gold', COMPLETED: 'green', FAILED: 'red', CANCELLED: 'dim',
   ONLINE: 'green', OFFLINE: 'dim', BUSY: 'gold', ERROR: 'red',
 };
 export default function StatusBadge({ status }: { status: TaskStatus | NodeStatus }) {

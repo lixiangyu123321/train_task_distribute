@@ -1,27 +1,30 @@
 """GPU Worker — FastAPI 入口"""
 from fastapi import FastAPI
 from api.routes import router
-from heartbeat.reporter import HeartbeatReporter
-from utils.network import register_node
-import uvicorn
 import asyncio
+import logging
+import uvicorn
 import config
 
-app = FastAPI(title="AI GPU Worker", version="1.0.0")
-app.include_router(router, prefix="/api/v1")
+logger = logging.getLogger(__name__)
 
-heartbeat_reporter = HeartbeatReporter()
+app = FastAPI(title="AI GPU Worker", version="2.0.0")
+app.include_router(router, prefix="/api/v1")
 
 
 @app.on_event("startup")
-async def startup():
-    register_node()
-    asyncio.create_task(heartbeat_reporter.start())
+async def _start_cleanup_scheduler():
+    from engine.cleanup import cleanup_old_outputs
 
+    async def _loop():
+        while True:
+            try:
+                await cleanup_old_outputs()
+            except Exception as e:
+                logger.error(f"Cleanup error: {e}")
+            await asyncio.sleep(3600)
 
-@app.on_event("shutdown")
-async def shutdown():
-    await heartbeat_reporter.stop()
+    asyncio.create_task(_loop())
 
 
 if __name__ == "__main__":
